@@ -1,0 +1,1 @@
+import mathf = math.factorialn = 10a = range(n)b = n*[0]m = 10**6-1for i in range(n-1):  f_i = f(n-i-1)  for j in range(0,n-i):    if f_i*(j+1) > m:      v = a[i]      a[i] = a[i+j]      a[i+2:i+j+1] = a[i+1:i+j]      a[i+1] = v      m -= f_i*j      breakprint a        

@@ -1,0 +1,1 @@
+"""def f(i,n):  res = None   if n == 0:     res = 1  elif n < i:     res = 0  else:    s = 0    for j in range(0,n+1,i):      s += f(i+1,n-j)    res = s    return resprint f(1,100)-1  """n = 100p = (n+1)*[0]p[0] = 1for i in range(1,n+1):  for j in range(i,n+1):    p[j] += p[j-i]    print p[100]-1        

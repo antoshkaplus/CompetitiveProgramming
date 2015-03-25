@@ -1,0 +1,1 @@
+f = open("triangle.txt","r")str = f.read()rows = map(lambda x: map(int,x.split(" ")),str.split("\n"))n = len(rows)for i in range(n-1,0,-1):  for j in range(i):    rows[i-1][j] += rows[i][j] if rows[i][j] > rows[i][j+1] else rows[i][j+1]    print rows[0][0]
