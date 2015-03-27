@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <cmath>
+#include <locale>
 
 using namespace std;
 
@@ -17,6 +18,7 @@ using namespace std;
 #define ST_i ST<int>
 #define ST_i64 ST<int64_t>
 #define ST_ii ST<pair<int, int>>
+
 
 #define V  vector
 #define V_i V<int>
@@ -42,32 +44,27 @@ using namespace std;
 #define ODD(n) ((n)%2 != 0) 
 #define EVEN(n) ((n)%2 == 0)
 
-#define ACCUMULATE()
-
-
-struct Jumping {
-    string ableToGet(int x, int y, V_i jumpLength) {
-        // need to get x and y after jumping around
-        // 
-        int sum = accumulate()
-        
-        
-    }
-};
-
-
-// 1
-struct Target {
-    V_s draw(int n) {
-        V_s res(n);
-        for (int i = 0; i < n; ++i) res[i].resize(n, ' ');
-        
-        for (int sz = n, ind = 0; sz > 0; sz-=4, ind+=2) {
-            for (int i = 0; i < sz; ++i) {
-                res[ind][ind + i] = res[ind + sz - 1][ind + i] = 
-                res[ind + i][ind] = res[ind + i][ind + sz - 1] = '#';
+struct NamingConvention {
+    string toCamelCase(string variableName) {
+        char diff = 'A' - 'a';
+        string result;
+        for (int i = 0; i < variableName.size(); ++i) {
+            if (variableName[i] == '_') {
+                variableName[i+1] += diff;
+            } else {
+                result += variableName[i];
             }
         }
-        return res;
+        return result;
     }
 };
+
+struct NarrowPassage2Easy {
+    int count(vector<int> size, int maxSizeSum) {
+        
+    
+    }
+};
+
+
+
