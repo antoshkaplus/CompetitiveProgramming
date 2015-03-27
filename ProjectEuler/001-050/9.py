@@ -1,0 +1,1 @@
+j1 = 1j2 = 499n = 500for j in xrange(j1,j2):  flag = False  for i in xrange(j,j2):    if i*(i+j) == 500:      print (i**4 - j**4)*2*i*j      flag = True            break  if flag: break

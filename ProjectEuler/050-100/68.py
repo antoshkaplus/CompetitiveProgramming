@@ -1,0 +1,1 @@
+from permutations import Permutationsres = []p = Permutations(range(1,10),9)while True:  r = p.get()  r = [10]+r+[r[4]]    v = r[0]+r[5]+r[5+1]  for i in range(1,5):    if r[i]+r[i+5]+r[i+5+1] != v:      break  else:    res.append(r)       if not p.next():    break    for r in res:  for i in range(5):    print " %d,%d,%d " % (r[i],r[i+5],r[i+5+1]),  print 
