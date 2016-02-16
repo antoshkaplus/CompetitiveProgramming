@@ -12,146 +12,72 @@
 
 using namespace std;
 
+/*
+ USER: zobayer
+ TASK: TRIP
+ ALGO: dynamic programming
+ */
 
+#include <ios>
+#include <cstring>
+#include <algorithm>
+using namespace std;
 
-struct Problem {
-    
-    struct R {
-        int no_s_1_sz;
-        int no_s_2_sz;
-    }
-    
-    // need to initialize with -1
-    R t[1000][1000];
-    
-    string s_1;
-    string s_2;
-        
-    
-    // return max sz
-    int solve(int i_1, int i_2) {
-        if (i_1 == -1 || i_2 == -1) return 0; 
-        if (s_1[i_1] == s_2[i_2]) {
-            // should put this value in our table somehow
-            return solve(i_1-1, i_2-1) + 1;
-        }
-        R& r = t[i_1][i_2];
-        if (r.no_s_1_sz == -1) r.no_s_1_sz = solve(i_1-1, i_2);
-        if (r.no_s_2_sz == -1) r.no_s_2_sz = solve(i_1, i_2-1);
-        return max(r.no_s_1_sz, r.no_s_2_sz);
-    }
-    
-    vector<string> gather(int i_1, int i_2) {
-        if (i_1 == -1 || i_2 == -1) return {""}; 
-        
-        if (s_1[i_1] == s_2[i_2]) {
-            auto ss = gather(i_1-1, i_2-1);
-            for (auto& s : ss) {
-                s += s_1[i_1];
-            } 
-            return ss;
-        }
-        R r = t[i_1][i_2];
-        if (r.no_s_1_sz > r.no_s_2_sz) {
-            return gather(i_1-1, i_2);
-        }
-        if (r.no_s_1_sz < r.no_s_2_sz) {
-            return gather(i_1, i_2-1);
-        }
-        auto v_1 = gather(i_1-1, i_2);
-        v_1.insert(v_2.begin(), v_2.end());
-        sort(v_1.begin(), v_1.end());
-        v_1.erase(unique(v_1.begin(), v_1.end()), v_1.end());
-        return v_1;
-    }
-    
-    vector<string> solve(string s_1, string s_2) {
-        this->s_1 = s_1;
-        this->s_2 = s_2;
-        for (int i_1 = 0; i_1 < s_1.size(); ++i_1) {
-            for (int i_2 = 0; i_2 < s_2.size(); ++i_2) {
-                t[i_1][i_2].no_s_1_sz = -1;
-                t[i_1][i_2].no_s_2_sz = -1;
-            }
-        }
-        // this one initializes everything
-        int sz = solve(s_1.size()-1, s_2.size()-1);
-        cout << "all sizes: " << sz << endl;
-        return gather(s_1.size()-1, s_2.size()-1);
-        
-    }
+const int MAX = 100;
+int dp[MAX][MAX], lcslen, len1, len2;
+char s1[MAX], s2[MAX], s3[MAX];
 
-};
+int lcs(int i, int j) {
+    int &ret = dp[i][j];
+    if(i==len1 || j==len2) return ret = 0;
+    if(ret != -1) return ret;
+    ret = 0;
+    if(s1[i]==s2[j]) ret = 1 + lcs(i+1, j+1);
+    else ret = max(lcs(i+1, j), lcs(i, j+1));
+    return ret;
+}
 
-
-
-
-
-int max;
-vector<string> ss;
-
-
-void find(const string& s_0, int i_0, const string& s_1, int i_1, string& res) {
-    if (i_0 == s_0.size() || i_1 == s_1.size()) {
-        if (max > res.size()) return;
-        if (max < res.size()) {
-            ss.clear();
-            max = res.size();
-        }
-        ss.push_back(res);
+void printAll(int na, int nb, int d) {
+    if(d==lcslen) {
+        s3[d] = 0;
+        puts(s3);
         return;
     }
-    
-    if (s_0[i_0] != s_1[i_1]) {
-        // take in i_0
-        auto t_1 = std::find(s_1.begin() + i_1, s_1.end(), s_0[i_0]);
-        if (t_1 != s_1.end()) {
-            res += s_0[i_0];
-            find(s_0, i_0+1, s_1, t_1-s_1.begin()+1, res);
-            res.pop_back();
-        } 
-        
-        // take in i_1
-        auto t_0 = std::find(s_0.begin() + i_0, s_0.end(), s_1[i_1]);
-        if (t_0 != s_0.end()) {
-            res += s_1[i_1];
-            find(s_0, t_0-s_0.begin()+1, s_1, i_1+1, res);
-            res.pop_back();
+    if(na==len1 || nb==len2) return;
+    for(char ch='a'; ch<='z'; ch++) {
+        bool done = false;
+        for(int i=na; i<len1; i++) {
+            if(ch==s1[i]) {
+                for(int j=nb; j<len2; j++) {
+                    if(ch==s2[j] && lcs(i, j)==lcslen-d) {
+                        s3[d] = ch;
+                        printAll(i+1, j+1, d+1);
+                        done = true;
+                        break;
+                    }
+                }
+            }
+            if(done) break;
         }
-        
-        // take in nothing
-        find(s_0, i_0 + 1, s_1, i_1 + 1, res);
-    } else {
-        res += s_0[i_0];
-        find(s_0, i_0 + 1, s_1, i_1 + 1, res);
-        res.pop_back();
     }
 }
 
-void find(string s_0, string s_1) {
-    string res;
-    find(s_0, 0, s_1, 0, res);
+int main() {
+    int t, i, j;
+    scanf("%d", &t);
+    while(t--) {
+        scanf("%s%s", s1, s2);
+        len1 = strlen(s1);
+        len2 = strlen(s2);
+        for(i=0; i<len1; i++)
+        for(j=0; j<len2; j++)
+        dp[i][j] = -1;
+        lcslen = lcs(0, 0);
+        printAll(0, 0, 0);
+        if(t) puts("");
+    }
+    return 0;
 }
-
-
-
-int main(int argc, char **argv) {
-    std::ios_base::sync_with_stdio(false);
-    int T;
-    cin >> T;
-    Problem p;
-    string t_0, t_1;
-    for (int t = 0; t < T; ++t) {
-        cin >> t_0 >> t_1;
-        auto ss = p.solve(t_0, t_1);
-        for (auto& s : ss) {
-            cout << s << endl;
-        }
-    } 
-}
-
-
-
 
 
 
