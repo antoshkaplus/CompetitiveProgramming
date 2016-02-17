@@ -19,13 +19,15 @@ string line;
 
 uint64_t countEnc(int startIndex) {
     if (startIndex >= line.size()) return 1;
+    if (line[startIndex] == '0') return 0;
+    
     auto it = m.find(startIndex);
     if (it != m.end()) {
         return it->second;
     }
     auto next = startIndex + 1;
     auto res = countEnc(next);
-    if (next != line.size() && line[next] != '0' && (line[startIndex] == '1' 
+    if (next != line.size() && (line[startIndex] == '1' 
                                 || (line[startIndex] == '2' && line[next] < '7'))) {
         
         auto p = countEnc(startIndex + 2);
@@ -34,6 +36,7 @@ uint64_t countEnc(int startIndex) {
     m[startIndex] = res;
     return res;
 }
+
 
 
 
