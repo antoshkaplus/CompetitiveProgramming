@@ -23,8 +23,8 @@ int BestScore(int i, int j, int age) {
     if (table[i][j] > 0) {
         return table[i][j];
     }
-    auto score = max(BestScore(i, j-1, age+1) + v[j]*age, 
-                     BestScore(i+1, j, age+1) + v[i]*age);
+    auto score = max(BestScore(i, j-1, age+1) + vs[j]*age, 
+                     BestScore(i+1, j, age+1) + vs[i]*age);
     table[i][j] = score;
     return score;
 }
@@ -39,5 +39,6 @@ int main(int argc, char **argv) {
         cin >> vs[n];
     }
     table.resize(N, vector<int>(N, -1));
-    cout << BestScore(0, N-1, 1);
+    cout << BestScore(0, N-1, 1) << endl;
 }
+

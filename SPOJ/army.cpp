@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <string>
 #include <cmath>
@@ -21,9 +20,13 @@ int main(int argc, char **argv) {
     for (int t = 0; t < T; ++t) {
         int NG, NM;
         cin >> NG >> NM;
+        if (NG == 0 && NM == 0) {
+            cout << "uncertain" << endl;
+            continue;
+        }
         vector<int> ngs(NG);
         for (auto& n : ngs) cin >> n;
-        vector<int> ngs(NM);
+        vector<int> nms(NM);
         for (auto& n : nms) cin >> n;
         sort(ngs.begin(), ngs.end(), std::greater<int>());
         sort(nms.begin(), nms.end(), std::greater<int>());

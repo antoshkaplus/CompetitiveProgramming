@@ -17,7 +17,7 @@ struct C {
     int p, w;
 };
 
-int INFINITY = numeric_limits<int>::max();
+int kInfinity = numeric_limits<int>::max();
 
 int main(int argc, char **argv) {
     std::ios_base::sync_with_stdio(false);
@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
     
     int M = F - E;
     // one element for each gram
-    vector<int> ps(M, INFINITY);
+    vector<int> ps(M, kInfinity);
     // init
     for (auto& c : cs) {
         if (ps.size() <= c.w) continue; 
@@ -43,11 +43,11 @@ int main(int argc, char **argv) {
     
     for (int i = 0; i < M; ++i) {
         for (auto& c : cs) {
-            if (i - c.w < 0 || ps[i - c.w] == INFINITY) continue;
+            if (i - c.w < 0 || ps[i - c.w] == kInfinity) continue;
             ps[i] = min(ps[i-c.w] + c.p, ps[i]);
         }
     }
-    if (ps.back() == INFINITY) {
+    if (ps.back() == kInfinity) {
         cout << "This is impossible." << endl; 
     } else {
         cout << "he minimum amount of money in the piggy-bank is " 

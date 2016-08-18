@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
             cin >> s_0 >> s_1;
             items[i] = Item(atoi(s_0.c_str()+2), mro_key(s_1));
         }
-        int mro_new_count;
+        //int mro_new_count;
         int m;
         cin >> m;
         for (int i = 0; i < m; ++i) {
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
         sort(items, items+item_count);
         for (int i_r = 0; i_r < resel_count; ++i_r) {
             Item* t = lower_bound(items, items + item_count, resels[i_r]);
-            int p = t->mro, y;
+            int p = t->mro; //, y;
             while (MRO[p] != p) {
                 p = MRO[p] = MRO[MRO[p]];
             }

@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <map>
 #include <assert.h>
+#include <fstream>
+#include <random>
 
 using namespace std;
 
@@ -132,7 +134,7 @@ namespace ant {
         }
         
         void AddToRight(int first, int last, int how_many) {
-            if (how_many == 0) return;
+            if (how_many <= 0) return;
             AddToRight(0, first, last, 0, elem_count_-1, how_many, perf_leaf_count_);
         }
         
@@ -143,6 +145,7 @@ namespace ant {
     private:
         
         void AddToRight(int node_index, int first, int last, int from, int to, int how_many, int perf_leaf_count) {
+            assert(perf_leaf_count != 0);
             auto count = (taken_.node(node_index) += how_many);
             if (count == to - from + 1) return;
             
@@ -163,15 +166,17 @@ namespace ant {
                 return;
             }
             
+            
+            // count right free that's in bound
             int r_ch = taken_.right_child(node_index);    
-            int r_count = taken_.node(r_ch);
-            int r_possible = to - first_right + 1;
+            int r_count = Count(r_ch, first_right, last, first_right, to, perf_leaf_half);
+            int r_possible = last - first_right + 1;
             int free = r_possible - r_count;
             if (free >= how_many) {
-                AddToRight(node_index, first_right, last, first_right, to, how_many, perf_leaf_half);
+                AddToRight(r_ch, first_right, last, first_right, to, how_many, perf_leaf_half);
                 return;
             } else {
-                taken_.node(r_ch) += free;
+                AddToRight(r_ch, first_right, last, first_right, to, free, perf_leaf_half);
                 how_many -= free;
                 AddToRight(taken_.left_child(node_index), first, first_right-1, from, first_right-1, how_many, perf_leaf_half);
             }
@@ -219,7 +224,7 @@ struct S {
 };
 
 
-int main(int argc, char **argv) {
+void solve(istream& cin, ostream& cout) {
     std::ios_base::sync_with_stdio(false);
     int test_count;
     cin >> test_count;
@@ -230,12 +235,13 @@ int main(int argc, char **argv) {
         for (auto& i : intervals) {
             cin >> i.a >> i.b >> i.c;
         }
-        cout << "read" << endl;
         sort(intervals.begin(), intervals.end(), [](const S& s_1, const S& s_2) {
             return s_1.b < s_2.b;
         });
-        cout << "sorted" << endl;
-        int sub = intervals.front().a;
+        int sub = min_element(intervals.begin(), intervals.end(), [](const S& s_1, const S& s_2) {
+            return s_1.a < s_2.a;
+        })->a;
+
         for (auto& i : intervals) {
             i.a -= sub;
             i.b -= sub;
@@ -243,11 +249,124 @@ int main(int argc, char **argv) {
         // 0 element is +1
         ant::RangeCount range_count(intervals.back().b + 1);
         for (auto& i : intervals) {
-            cout << "lol" << endl;
             int count = range_count.Count(i.a, i.b);
             range_count.AddToRight(i.a, i.b, i.c - count);
         }
-        cout << "done" << endl;
-        cout << range_count.Count(0, intervals.back().b);
+        cout << range_count.Count(0, intervals.back().b) << endl;
     }
 }
+
+
+ant::Count solve(vector<S> intervals) {
+    sort(intervals.begin(), intervals.end(), [](const S& s_1, const S& s_2) {
+        return s_1.b < s_2.b;
+    });
+    int sub = min_element(intervals.begin(), intervals.end(), [](const S& s_1, const S& s_2) {
+        return s_1.a < s_2.a;
+    })->a;
+
+    for (auto& i : intervals) {
+        i.a -= sub;
+        i.b -= sub;
+    }
+    // 0 element is +1
+    ant::RangeCount range_count(intervals.back().b + 1);
+    for (auto& i : intervals) {
+        int count = range_count.Count(i.a, i.b);
+        range_count.AddToRight(i.a, i.b, i.c - count);
+    }
+    return range_count.Count(0, intervals.back().b);
+}
+
+
+
+struct Test {
+    vector<S> intervals;
+    ant::Count result;
+};
+
+
+default_random_engine rng;
+
+
+// border and how many intervals to take
+// how many bound
+Test prepare_test_cases(int a, int b, int n) {
+    std::uniform_int_distribution<> numb_distr(a, b);
+    
+    
+    vector<S> intervals(n);
+    for (auto& s : intervals) {
+        auto x_1 = numb_distr(rng);
+        auto x_2 = numb_distr(rng);
+        tie(s.a, s.b) = minmax(x_1, x_2);
+        std::uniform_int_distribution<> how_many_distr(0, s.b - s.a + 1);
+        s.c = how_many_distr(rng);
+    }
+    int left_shift = min_element(intervals.begin(), intervals.end(), [](const S& s_1, const S& s_2) {
+        return s_1.a < s_2.a;
+    })->a;
+    for_each(intervals.begin(), intervals.end(), [=](S& s) { 
+        s.a -= left_shift;
+        s.b -= left_shift;
+    });
+    
+    int last = max_element(intervals.begin(), intervals.end(), [](const S& s_1, const S& s_2) {
+        return s_1.b < s_2.b;
+    })->b; 
+    
+    vector<bool> taken(last + 1, false); 
+    
+    sort(intervals.begin(), intervals.end(), [](const S& s_1, const S& s_2) {
+        return s_1.b < s_2.b;
+    });
+    
+    
+    for (auto& s : intervals) {
+        auto present_count = count(taken.begin() + s.a, taken.begin() + s.b + 1, true);
+        auto left = s.c - present_count;
+        for (auto i = s.b; left > 0 && i >= s.a; --i) {
+            if (!taken[i]) {
+                taken[i] = true;
+                --left;
+            }
+        }
+        assert(left <= 0);
+    }
+    
+    int res = count(taken.begin(), taken.end(), true);
+    // now we have to write it somewhere
+    
+    for_each(intervals.begin(), intervals.end(), [=](S& s) { 
+        s.a += left_shift;
+        s.b += left_shift;
+    });
+    
+    random_shuffle(intervals.begin(), intervals.end());
+    
+    return Test{intervals, res};
+}
+
+void test() {   
+    // starting values
+    vector<int> as = { 1, 5, 10, 20, 100 }; 
+    vector<int> sizes = { 10, 100, 1000, 10000 };
+    for (int s : sizes) {
+        uniform_int_distribution<> n_distr(1, s);
+        for (int a : as) {
+            Test t = prepare_test_cases(a, a+s-1, n_distr(rng));
+            auto s_res = solve(t.intervals);
+            assert(s_res == t.result);
+        }
+    }
+
+}
+
+
+int main(int argc, char **argv) {
+    //ifstream in("../in.txt");
+    //solve(in, cout);
+}
+
+
+
