@@ -196,6 +196,7 @@ void BFS(const Graph<AdjacencyListPtr>& gr, vector<Index> vs, Process& pr) {
     }
 }
 
+
 template<class Process, class AdjacencyListPtr>
 void BFS_Revisit(const Graph<AdjacencyListPtr>& gr, vector<Index> vs, Process& pr) {
     std::queue<Index> q;
@@ -224,6 +225,21 @@ void BFS_Revisit(const Graph<AdjacencyListPtr>& gr, vector<Index> vs, Process& p
 
 }
 
+// what we can do is some kind of template with following arguments
+template<Revisit|Stop|From>
+// we can implement all three options and call it BFS
+
+// can make it a class on creation you pass variables in and and try to assign with whatever
+
+
+// with this function we also provide parent in
+template<class Process, class AdjacencyListPtr>
+void BFS_From() {
+	
+	
+}
+
+
 
 
 using P = array<int, 2>;
@@ -234,12 +250,16 @@ struct S {
 }
 
 
+
+// here we should do counting and relations thing
 class Counter {
 
     int counter;
     vector<int>& level;
-
-    bool operator()(Index v) {
+	Grid<int>& related;
+	
+	
+    bool operator()(Index v, Index from) {
         // level is always unknown first time
         if (!has_parents(v)) {
             level[v] = 0;
@@ -250,9 +270,13 @@ class Counter {
             return true;
         }
         level[v] = 1 + max(level[ps[0]], level[ps[1]]);
-        return false;
+        related(v, ps[0]) = true;
+		related(v, ps[1]) = true;
+		return false;
     }
 }
+
+
 
 
 
@@ -276,14 +300,13 @@ int main(int argc, char **argv) {
             --ch.parents[1];
             has_parents[ch.child] = false;
             
+			// related who to whom
+			
             related(ch.child,ch.parents[0]) = true;
             related(ch.child,ch.parents[1]) = true;
             
         }
-        
-        for (;;) {
-            
-        }
+       
         
         
         
@@ -299,11 +322,27 @@ int main(int argc, char **argv) {
         
         // so now we got levels;
         
+        // lets think about main algorithm
+        level_1
+		level_2
+		
+		deg(i_1, i_2) = 
+		if (!related(i_1, i_2)) return 0;
+		// want to make second guy as son of the first one
+		if level_2 < level_1: swap(i_1, i_2)
         
+		
+		
+		deg(i_1, i_2) = 
+			get parents of 2
+			p_1, p_2
+			
+			1/2(deg(i_1, p_1) + deg(i_1, p_2))
         
-        
-        
-        
+        // problem solved
+		
+		
+		// you should memorize result. and have done... it's just looks nicer because of those float numbers around.
         
     }    
 }
