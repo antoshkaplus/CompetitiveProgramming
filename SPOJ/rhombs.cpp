@@ -1,5 +1,7 @@
 #include <cstdio>
 #include <algorithm>
+#include <cmath>
+
 using namespace std;
 
 const int
@@ -24,7 +26,7 @@ int dir[MAXN], cant[MAXN], x[MAXN], y[MAXN];
         for ( i = 0; i < N; i++ )
             area += x[i] * y[i + 1] - y[i] * x[i + 1];
 
-        return abs( area ) / 2;
+        return std::abs( static_cast<double>(area) ) / 2;
     }
 
 int main() {

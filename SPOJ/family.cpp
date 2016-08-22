@@ -9,10 +9,18 @@
 #include <unordered_map>
 #include <algorithm>
 #include <map>
+#include <array>
+#include <iomanip>
+#include <memory>
+#include <fstream>
+#include <bitset>
 
 using namespace std;
 
 
+using Count = int;
+using Int = int;
+using Index = int;
 
 template<class T>
 struct Grid {
@@ -42,7 +50,7 @@ struct Grid {
     col_count_(col_count),
     grid_(row_count*col_count, value_type) {}
     
-    Grid(const Size& size) : Grid(size.row, size.col) {}
+    
     Grid(std::initializer_list<std::vector<T>> list)
     :   Grid(list.size(), list.size() == 0 ? 0 : list.begin()->size()){
         auto b = list.begin();
@@ -50,32 +58,13 @@ struct Grid {
             std::copy(b->begin(), b->end(), grid_.begin() + r*col_count());
         }
     }
-    
-    bool isInside(const Position& p) const {
-        return isInside(p.row, p.col);
-    }
-    bool isInside(Int row, Int col) const {
-        return row >= 0 && row < row_count_ && 
-        col >= 0 && col < col_count_;
-    }
-    
-    
-    bool IsInside(const Position& p) const {
-        return isInside(p.row, p.col);
-    }
-    bool IsInside(Int row, Int col) const {
-        return row >= 0 && row < row_count_ && 
-        col >= 0 && col < col_count_;
-    }
-    
+          
     void resize(Count row_count, Count col_count) {
         row_count_ = row_count;
         col_count_ = col_count;
         grid_.resize(row_count*col_count);
     }
-    void resize(const Size& size) {
-        resize(size.row, size.col);
-    }
+    
     
     void fill(const T& t) {
         std::fill(grid_.begin(), grid_.end(), t);
@@ -83,22 +72,8 @@ struct Grid {
     
     Count row_count() const { return row_count_; }
     Count col_count() const { return col_count_; }
-    Size size() const { return Size(row_count(), col_count()); } 
+   
     Count cell_count() const { return row_count()*col_count(); } 
-    
-    T& operator()(const Position& p) {
-        return grid_[p.row*col_count_ + p.col];
-    }
-    const T& operator()(const Position& p) const {
-        return grid_[p.row*col_count_ + p.col];
-    }
-    
-    T& operator[](const Position& p) {
-        return grid_[p.row*col_count_ + p.col];
-    }
-    const T& operator[](const Position& p) const {
-        return grid_[p.row*col_count_ + p.col];
-    }
     
     T& operator()(Int row, Int col) {
         return grid_[row*col_count_ + col];
@@ -117,51 +92,9 @@ struct Grid {
             }
         }
     }
-    
-    // proc args:
-    //      grid itself
-    //      from direction
-    //      position to process
-    template<class Process>
-    void ForEachNearby(const Position& t, Process& proc) {
-        if (t.row > 0) {
-            proc(*this, kDirDown, t+Indent{-1, 0});
-        }
-        if (t.row < row_count_-1) {
-            proc(*this, kDirUp, t+Indent{ 1, 0});
-        }
-        if (t.col > 0) {
-            proc(*this, kDirRight, t+Indent{ 0,-1});
-        }
-        if (t.col < col_count()-1) {
-            proc(*this, kDirLeft, t+Indent{ 0, 1});
-        }
-    }
-    
-    // proc arg: const Position&
-    template<class Process> 
-    void ForEachPosition(Process& proc) const {
-        for (Index r = 0; r < row_count(); ++r) {
-            for (Index c = 0; c < col_count(); ++c) {
-                proc(Position{r, c});
-            }
-        }
-    } 
-    
-    Grid<T> Transposed() {
-        Grid<T> g(col_count(), row_count());
-        auto func = [&](const Position& p) {
-            g(p.col, p.row) = grid_[index(p)];
-        };
-        ForEachPosition(func);
-        return g;
-    }
-    
+       
+           
 private:
-    Index index(const Position& p) {
-        return p.row*col_count_ + p.col;
-    }
-    
     
     Count row_count_, col_count_;
     std::vector<T> grid_;
@@ -170,6 +103,46 @@ private:
     template<class U>
     friend bool operator==(const Grid<U>& g_0, const Grid<U>& g_1);
 };
+
+
+
+template<class T>
+using AdjacencyList = std::vector<std::vector<T>>;
+
+using NodeAdjacencyList = AdjacencyList<Index>;
+using Edge = std::array<Index, 2>;
+
+NodeAdjacencyList EdgesToAdjacencyList(const std::vector<Edge>& edges, size_t node_count);
+
+
+
+
+
+// struct provides access on reading. 
+// const prevents alternating variables 
+// immutable class
+// like wrapper
+// can't use unique_ptr here or will be unable to copy
+template <class NodeAdjacencyListPtr>
+struct Graph {
+    
+    NodeAdjacencyListPtr adjacency_list_;
+    
+    Graph(NodeAdjacencyListPtr adj_list) : adjacency_list_(adj_list) {}  
+    
+    Count degree(Index i) const {
+        return (*adjacency_list_)[i].size();
+    }
+    
+    const std::vector<Index>& adjacent(Index i) const {
+        return (*adjacency_list_)[i];
+    }
+    
+    Count node_count() const {
+        return adjacency_list_->size();
+    }
+};
+
 
 
 template<class Process, class AdjacencyListPtr>
@@ -197,8 +170,8 @@ void BFS(const Graph<AdjacencyListPtr>& gr, vector<Index> vs, Process& pr) {
 }
 
 
-template<class Process, class AdjacencyListPtr>
-void BFS_Revisit(const Graph<AdjacencyListPtr>& gr, vector<Index> vs, Process& pr) {
+template<class Process, class AdjacencyListPtr> 
+void BFS_LateRevisit(const Graph<AdjacencyListPtr>& gr, vector<Index> vs, Process& pr) {
     std::queue<Index> q;
     Count c = gr.node_count();
     std::vector<bool> visited(c, false);
@@ -209,7 +182,6 @@ void BFS_Revisit(const Graph<AdjacencyListPtr>& gr, vector<Index> vs, Process& p
     while (!q.empty()) {
         Index v = q.front();
         q.pop();
-        // should we also pass from where we came from
         bool b = pr(v);
         if (b) {
             q.push(v);
@@ -222,24 +194,8 @@ void BFS_Revisit(const Graph<AdjacencyListPtr>& gr, vector<Index> vs, Process& p
             }
         }
     }
-
+    
 }
-
-// what we can do is some kind of template with following arguments
-template<Revisit|Stop|From>
-// we can implement all three options and call it BFS
-
-// can make it a class on creation you pass variables in and and try to assign with whatever
-
-
-// with this function we also provide parent in
-template<class Process, class AdjacencyListPtr>
-void BFS_From() {
-	
-	
-}
-
-
 
 
 using P = array<int, 2>;
@@ -247,36 +203,233 @@ using P = array<int, 2>;
 struct S {
     int child;
     P parents;
+};
+
+
+
+
+template<class T = Index>
+class Range {
+public:
+    class Iterator : std::iterator<std::input_iterator_tag, T> {
+    public:
+        Iterator(const Range& range, T current) 
+        : range_(range), current_(current) {
+            // just copied that lol
+            if (range_.step_*(current_-range_.last_) > 0) current_ = range_.last_;
+        }
+        const T operator*() const { return current_; }
+        bool operator==(const Iterator& it) const {
+            return current_ == *it;
+        }
+        bool operator!=(const Iterator& it) const {
+            return current_ != *it;
+        }
+        Iterator& operator++() {
+            current_ += range_.step_;
+            if (range_.step_*(current_-range_.last_) > 0) current_ = range_.last_;
+            return *this;
+        }
+        Iterator operator++(int) { 
+            Iterator it(*this); 
+            operator++(); 
+            return it;
+        }
+    private:
+        const Range& range_;
+        T current_;
+    };
+    
+    friend class Iterator;
+    
+    Range(T last) : first_(0), last_(last), step_(1) {}
+    Range(T first, T last, T step = 1)
+    : first_(first), last_(last), step_(step) {}
+    
+    Iterator begin() const { return Iterator(*this, first_); }
+    Iterator end()   const { return Iterator(*this, last_); }
+    
+    Index begin_index() const { return first_; }
+    Index end_index() const { return last_; } 
+    
+private:
+    T first_, last_, step_;
+};
+
+// it's gets so complicated at that point.
+
+
+NodeAdjacencyList ToAdjList(const vector<P>& arr, const vector<bool>& has_parent) {
+    NodeAdjacencyList list(arr.size());
+    for (auto i = 0; i < arr.size(); ++i) {
+        if (has_parent[i]) {
+            list[i].push_back(arr[i][0]);
+            list[i].push_back(arr[i][1]);
+        }
+    }
+    return list;
 }
 
 
 
-// here we should do counting and relations thing
-class Counter {
+template<class Index>
+AdjacencyList<Index> Reverse(const AdjacencyList<Index>& adj) {
+    int V = adj.size();
+    AdjacencyList<Index> adj_new(V);
+    for (int i = 0; i < V; ++i) {
+        for (int j : adj[i]) {
+            adj_new[j].push_back(i);
+        }
+    }
+    return adj_new;
+}
 
-    int counter;
-    vector<int>& level;
-	Grid<int>& related;
-	
-	
-    bool operator()(Index v, Index from) {
+Graph<const NodeAdjacencyList*> CreateGraph(const NodeAdjacencyList* ptr) {
+    return Graph<const NodeAdjacencyList*>(ptr);
+}
+
+Graph<const NodeAdjacencyList*> CreateGraph(const NodeAdjacencyList& ptr) {
+    return CreateGraph(&ptr);
+}
+
+
+template<Count MAX_MEMBERS>
+class Relates {
+public:
+    Relates(Count member_count) : ancestors_(member_count) {}
+
+    void AddAncestor(Index ancestor) {
+        ancestors_[ancestor].set(ancestor);
+    }
+    
+    void AddRelation(Index child, Index parent) {
+        ancestors_[child] |= ancestors_[parent];
+    }
+    
+    void ComputeRelatives() {
+        for (Index i_1 = 0; i_1 < ancestors_.size(); ++i_1) {
+            for (Index i_2 = i_1; i_2 < ancestors_.size(); ++i_2) {
+                if ((ancestors_[i_1] & ancestors_[i_2]).any()) {
+                    related_(i_1, i_2) = related_(i_2, i_1) = true;
+                }
+            }
+        }
+    }
+    
+    bool related(Index i_1, Index i_2) {
+        return related_(i_1, i_2);
+    }
+    
+    Grid<int> related_{MAX_MEMBERS, MAX_MEMBERS, false};
+    vector<bitset<MAX_MEMBERS>> ancestors_;
+};
+
+
+
+class RelationshipDegree {
+
+    const double UNKNOWN = -1;
+    static constexpr Count MAX_MEMBERS = 300;
+    
+public:
+    
+    RelationshipDegree(int member_count, int have_parents_count) 
+        : member_count_(member_count), have_parents_count_(have_parents_count), 
+            parents_(member_count), has_parents_(member_count, false), level_(member_count),
+            degree_(member_count, member_count, UNKNOWN), related_(member_count_) {}
+    
+    
+    double Degree(int i_1, int i_2) {
+        if (degree_(i_1, i_2) != UNKNOWN) {
+            return degree_(i_1, i_2);
+        }
+        
+        int level_1 = level_[i_1];
+        int level_2 = level_[i_2];
+        
+        // make second as son of the first one (second level should be bigger)
+        if (level_2 < level_1) swap(i_1, i_2);
+        
+        auto p_1 = parents_[i_2][0]; 
+        auto p_2 = parents_[i_2][1];
+        auto d_1 = Degree(i_1, p_1);
+        auto d_2 = Degree(i_1, p_2);
+        auto d = 1/2. * (d_1 + d_2);
+        AddDegree(i_1, i_2, d);
+        return d;
+    }
+    
+    void Precompute() {
+        vector<int> base_vertices(member_count_-have_parents_count_);
+        Range<> r(member_count_);
+        copy_if(r.begin(), r.end(), base_vertices.begin(), [&](Index i) { return !has_parents_[i]; } );
+        
+        // compute relatives
+        for_each(base_vertices.begin(), base_vertices.end(), [&](Index i) { related_.AddAncestor(i); });
+        for (Index v = 0; v < member_count_; ++v) {
+            if (!has_parents_[v]) continue;
+            auto& p = parents_[v];
+            related_.AddRelation(v, p[0]);
+            related_.AddRelation(v, p[1]);
+        }
+        related_.ComputeRelatives();
+        FillUnrelated();
+        
+        // compute levels
+        auto adj_list = Reverse(ToAdjList(parents_, has_parents_));
+        auto graph = CreateGraph(adj_list);
+        
+        auto handler = [&](Index v) { return BFS_Handler(v); };
+        BFS_LateRevisit(graph, base_vertices, handler);
+    }
+    
+    
+    void AddParents(Index v, const P& p) {
+        has_parents_[v] = true;
+        parents_[v] = p;
+    }
+
+private:
+
+    void FillUnrelated() {
+        for (auto r = 0; r < member_count_; ++r) {
+            for (auto c = r; c < member_count_; ++c) {
+                if (r == c) {
+                    AddDegree(r, c, 100);
+                } else if (!related_.related(r, c)) {
+                    AddDegree(r, c, 0);
+                }
+            }
+        }
+    }
+
+    bool BFS_Handler(Index v) {
         // level is always unknown first time
-        if (!has_parents(v)) {
-            level[v] = 0;
+        if (!has_parents_[v]) {
+            level_[v] = 0;
             return false;
         } 
-        auto ps = parents(v);
-        if (level[ps[0]] == -1 || level[ps[1]] == -1) {
+        auto ps = parents_[v];
+        if (level_[ps[0]] == -1 || level_[ps[1]] == -1) {
             return true;
         }
-        level[v] = 1 + max(level[ps[0]], level[ps[1]]);
-        related(v, ps[0]) = true;
-		related(v, ps[1]) = true;
-		return false;
+        level_[v] = 1 + max(level_[ps[0]], level_[ps[1]]);
+        return false;
     }
-}
 
+    void AddDegree(Index i_1, Index i_2, double d) {
+        degree_(i_1, i_2) = degree_(i_2, i_1) = d;
+    }
 
+    Count member_count_;
+    Count have_parents_count_;
+    vector<P> parents_;
+    vector<bool> has_parents_;
+    vector<int> level_;
+    Grid<double> degree_;
+    Relates<MAX_MEMBERS> related_;
+    
+};
 
 
 // so we get grid of those guys;
@@ -363,69 +516,55 @@ Count CountDigits(T t) {
 
 
 
-int main(int argc, char **argv) {
-    std::ios_base::sync_with_stdio(false);
+void solve(istream& cin, ostream& cout) {
     int T;
     cin >> T;
     for (int t = 0; t < T; ++t) {
         int N, K;
         cin >> N >> K;
-        // family members numbered from 1 to N
-        // K - number of monsters that do have parents
-        vector<S> children(K);
-        vector<bool> has_parents(N);
-        // we can consider it as Adj list
-        Grid<int> related(N);
-        for (auto& ch : children) {
-            cin >> ch.child >> ch.parents[0] >> ch.parents[1];
-            --ch.child;
-            --ch.parents[0];
-            --ch.parents[1];
-            has_parents[ch.child] = false;
-            
-			// related who to whom
-			
-            related(ch.child,ch.parents[0]) = true;
-            related(ch.child,ch.parents[1]) = true;
-            
+        RelationshipDegree rd(N, K);
+        
+        for (auto i = 0; i < K; ++i) {
+            Index ch;
+            P p;
+            cin >> ch; 
+            --ch;
+            cin >> p[0] >> p[1];
+            --p[0]; 
+            --p[1];
+            rd.AddParents(ch, p);
         }
-       
         
+        rd.Precompute();
         
-        
-        
-        vector<int> level(N);
-        
-        
-        vector<int> base_vertices;
-        copy_if( range(N) ,  base_vertices, has_no_parents );
-        
-        // need to build separate data structure
-        BFS_Revisit(base_vertices, adj_list, counter );
-        
-        // so now we got levels;
-        
-        // lets think about main algorithm
-        level_1
-		level_2
-		
-		deg(i_1, i_2) = 
-		if (!related(i_1, i_2)) return 0;
-		// want to make second guy as son of the first one
-		if level_2 < level_1: swap(i_1, i_2)
-        
-		
-		
-		deg(i_1, i_2) = 
-			get parents of 2
-			p_1, p_2
-			
-			1/2(deg(i_1, p_1) + deg(i_1, p_2))
-        
-        // problem solved
-		
-		
-		// you should memorize result. and have done... it's just looks nicer because of those float numbers around.
-        
+        int M;
+        cin >> M;
+        for (auto i = 0; i < M; ++i) {
+            int m_1, m_2;
+            cin >> m_1 >> m_2;
+            --m_1;
+            --m_2;
+            cout << rd.Degree(m_1, m_2) << '%' << endl;
+        }
     }    
 }
+
+
+int main(int argc, char **argv) {
+    std::ios_base::sync_with_stdio(false);
+    //ifstream in("../in.txt");
+    solve(cin, cout);
+}
+
+
+// we have to find exact degree and seems like double won't work for this one
+
+// we have to think about test cases
+// there are a lot of divisions by two
+
+
+// if i start with very big integer and try to later find out float part
+
+
+
+
