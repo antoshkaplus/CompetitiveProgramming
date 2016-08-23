@@ -279,6 +279,89 @@ class Counter {
 
 
 
+// so we get grid of those guys;
+// we place negatives at the beginging;
+// when we open more values we place it there;
+// recursive calles are going to be expensive but we should be fine.
+// 
+
+
+struct Numb {
+	bigint number;
+	Count shift;
+}
+
+void Bring(Numb& n, Count sh) {
+	for (auto i = n.shift; i <= sh; ++i) {
+		Mul(n.number, 10);
+	}
+	n.shift = sh;
+}
+
+Numb Sum(const Numb& n_1, const Numb& n_2) {
+	Numb res;
+	auto m = max(n_1.shift, n_2.shift);
+	Bring(n_1, m);
+	Bring(n_2, m);
+	res.numb = sum(n_1.number, n_2.number);
+	res.shift = m;
+	return res;
+}
+
+void DivideBy2(Numb& n) {
+	if (n.number.remainder(2) != 0) {
+		n.number.mul(10);
+		++n.shift;
+	}
+	n.number.divide(2);
+}
+
+// something like this
+void IsDegreeComputed(Index i_1, Index i_2) {
+ 	return !degree(i_1, i_2).IsNegative();
+}
+
+// d_1, d_2
+// s = Sum(d_1, d_2)
+// s.DivideBy2();
+// return s;
+// from recursive method should return reference to the object;
+// shouldn't be a big deal
+
+// how to output stuff...
+void Print(const Numb& n) {
+	
+	// we may try to divide first
+	if (n.shift == 0) {
+		// it's 0 or 1
+		
+	} else {
+		while (n.number.remainder(10) == 0) {
+			n.number.divide(10);
+			--n.shift;
+		}
+		
+		cout << "0.";
+		auto pred_zeros = n.shift - n.number.digit_count();
+		for (auto i = 0; i < pred_zeros; ++i) {
+			cout << "0";
+		}
+		cout << n.number;
+	}
+}
+
+template<class T>
+Count CountDigits(T t) {
+	Count count = 0;
+	while (t != 0) {
+		t /= 10;
+		++count;
+	}
+	return count;
+}
+ 
+
+
 
 int main(int argc, char **argv) {
     std::ios_base::sync_with_stdio(false);
