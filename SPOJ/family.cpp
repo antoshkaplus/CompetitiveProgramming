@@ -14,6 +14,7 @@
 #include <memory>
 #include <fstream>
 #include <bitset>
+#include <cassert>
 
 using namespace std;
 
@@ -21,6 +22,266 @@ using namespace std;
 using Count = int;
 using Int = int;
 using Index = int;
+
+
+// number of digits in int 0 is 0
+template<class T>
+Count CountDigits(T t) {
+    Count count = 0;
+    while (t != 0) {
+        t /= 10;
+        ++count;
+    }
+    return count;
+}
+
+
+struct bigint {
+    
+    bigint() {}
+    bigint(const std::string& s) {
+        auto s_i_begin = 0;
+        while (std::isspace(s[s_i_begin])) {
+            ++s_i_begin;
+        }
+        
+        is_negative_ = false;
+        if (s[s_i_begin] == '-') is_negative_ = true;
+        if (s[s_i_begin] == '-' || s[s_i_begin] == '+') ++s_i_begin;
+        
+        Count n = 0;
+        while (std::isdigit(s[s_i_begin + n])) {
+            ++n;
+        }
+        init_words(s.c_str()+s_i_begin, n);
+    }  
+    
+    bigint(int small) {
+        is_negative_ = false;
+        if (small == 0) return;
+        words_.push_back(small);
+    }
+    
+    void init_words(const char* s, Count n) {
+        if (n == 0) {
+            words_.resize(1);
+            words_[0] = 0;
+        }
+        
+        auto w_count = n/kWordDigitCount;
+        auto rem = n%kWordDigitCount;
+        char buf[kWordDigitCount+1]; // 0 character 
+        auto assign = [&](const char* str, Count str_n, Index w_i) {
+            std::memcpy(buf, str, str_n*sizeof(char));
+            buf[str_n] = '\0';
+            words_[w_i] = kStrToWord(buf);
+        };
+        if (rem > 0) { ;
+            words_.resize(w_count+1);
+            assign(s, rem, w_count);
+        } else {
+            words_.resize(w_count);
+        }
+        for (Int w_i = 0, s_i = (Int)n-kWordDigitCount; 
+             w_i < w_count; ++w_i, s_i-=kWordDigitCount) {
+            assign(s+s_i, kWordDigitCount, w_i);
+        }
+    }
+    
+    bool is_zero() const {
+        return words_.size() == 1 && words_[0] == 0;
+    }
+    
+    Count digit_count() const {
+        if (words_.empty()) return 0;
+        return CountDigits(words_.back()) + (kWordDigitCount * (words_.size() - 1));
+    }
+    
+    void Sum(const bigint& b) {
+        
+    }
+    
+    int Remainder(int small) const {
+        return remainder(*this, small);
+    }
+    
+    void Divide(int small) {
+        *this = division(*this, small);
+    }
+    
+    
+    void Mul(int small_numb) {
+        if (words_.empty()) return;
+        auto sz = words_.size();
+        for (auto i = 0; i < sz; ++i) {
+            words_[i] *= small_numb;
+        }
+        words_.push_back(0);
+        for (auto i = 0; i < sz; ++i) {
+            ShiftExcessiveRanks(i);
+        }
+        if (words_.back() == 0) words_.pop_back();
+    }
+
+    
+private:
+    
+    void ShiftExcessiveRanks(Index i) {
+        auto& w = words_;
+        assert(w.size() > i+1);
+        w[i+1] += w[i]/kWordBase;
+        w[i] %= kWordBase; 
+    }
+    
+    using word_type = int64_t;
+    
+    constexpr static const auto kStrToWord = std::atol;
+    static const size_t kWordDigitCount = 9;
+    static const word_type kWordBase = 1e+9;
+    
+    // should ve just use negative
+    bool is_negative_;
+    std::vector<word_type> words_;
+    // how many word should be empty on the right
+    Count shift_;
+    
+    
+    friend bigint operator*(const bigint& b_0, const bigint& b_1);
+    friend bigint standard_multiplication(const bigint& b_0, const bigint& b_1);
+    friend bigint sum(const bigint& b_1, const bigint& b_2);
+    friend std::ostream& operator<<(std::ostream& output, const bigint& b);
+    friend bigint division(const bigint& b, int small_numb);
+    friend int remainder(const bigint& b, int small_numb);
+    
+    
+    friend bool operator==(const bigint& b_1, const bigint& b_2);
+    friend bool operator==(const bigint& b, int small);
+    friend bool operator!=(const bigint& b, int small); 
+};
+
+// one interface but different implementations???
+struct bigint_view {
+    
+    Count shift_;
+    // should be a range kind of
+    Index i_begin;
+    Index i_end;
+    bigint& base;
+};
+
+
+
+bigint standard_multiplication(const bigint& b_0, const bigint& b_1) {
+    bigint r;
+    if (b_0.is_zero() || b_1.is_zero()) {
+        r.words_.resize(1, 0);
+        return r;
+    }
+    
+    auto& w_0 = b_0.words_;
+    auto& w_1 = b_1.words_;
+    r.is_negative_ = b_0.is_negative_ ^ b_1.is_negative_; // should be bit operation 
+                                                          // b_1 * b_0
+                                                          // inner loop should be bigger?
+    auto& w_r = r.words_; 
+    w_r.resize(w_0.size() + w_1.size(), 0);
+    for (auto i = 0; i < w_0.size(); ++i) {
+        for (auto j = 0; j < w_1.size(); ++j) {
+            w_r[i+j] += w_0[i]*w_1[j];
+            w_r[i+j+1] += w_r[i+j]/bigint::kWordBase;
+            w_r[i+j] %= bigint::kWordBase; 
+        }
+    }
+    if (w_r.back() == 0) w_r.pop_back();
+    return r;
+}
+
+//bigint karatsuba_multiplication(const bigint& b_0, const bigint& b_1) {
+//    bigint r;
+//}
+
+
+
+bigint sum(const bigint& b_1, const bigint& b_2) {
+    
+    auto w_min_p = &b_1.words_;
+    auto w_max_p = &b_2.words_;
+    if (w_min_p->size() > w_max_p->size()) {
+        swap(w_min_p, w_max_p);
+    }
+    auto& w_min = *w_min_p;
+    auto& w_max = *w_max_p; 
+    
+    auto min_sz = w_min.size();
+    auto max_sz = w_max.size();
+    
+    bigint b_r;
+    b_r.is_negative_ = false;
+    auto& w_r = b_r.words_;
+    w_r = w_max;
+    for (auto i = 0; i < min_sz; ++i) {
+        w_r[i] += w_min[i];	
+    }
+    w_r.push_back(0);
+    for (auto i = 0; i < max_sz; ++i) {
+        b_r.ShiftExcessiveRanks(i);
+    }
+    if (w_r.back() == 0) w_r.pop_back();
+    
+    return b_r;
+}
+
+bigint division(const bigint& b, int small_numb) {
+    bigint bb = b;
+    auto& w = bb.words_;
+    for (auto i = w.size()-1; i > 0; --i) {
+        auto t = w[i] % small_numb;
+        w[i] /= small_numb;
+        w[i-1] += bigint::kWordBase*t;
+        
+    }
+    w[0] /= small_numb;
+    return bb;
+}
+
+int remainder(const bigint& b, int small_numb) {
+    return b.words_.back() % small_numb;
+}
+
+bigint operator*(const bigint& b_0, const bigint& b_1) {
+    return standard_multiplication(b_0, b_1);
+}
+
+
+std::ostream& operator<<(std::ostream& output, const bigint& b) {
+    auto& w = b.words_;
+    if (b.is_negative_ && w.back() != 0) output << '-';
+    output << w.back();
+    
+    for (Int i = (Int)w.size()-2; i >= 0; --i) {
+        output.width(bigint::kWordDigitCount);
+        output.fill('0');
+        output.setf(std::ios::right);
+        
+        output << w[i];
+    }
+    output.width(0);
+    return output;
+}   
+
+bool operator==(const bigint& b_1, const bigint& b_2) {
+    return b_1.is_negative_ == b_2.is_negative_ && b_1.words_ == b_2.words_;
+}
+
+bool operator==(const bigint& b, int small) {
+    return (b.words_.empty() && small == 0) || (b.words_.size() == 1 && b.words_.back() == small);
+}
+
+bool operator!=(const bigint& b, int small) {
+    return !(b == small);
+}
+
+
 
 template<class T>
 struct Grid {
@@ -324,6 +585,69 @@ public:
     vector<bitset<MAX_MEMBERS>> ancestors_;
 };
 
+struct Numb {
+    bigint number;
+    Count shift = 0;
+    
+    Numb() {}
+    Numb(int small) : number(small) {}
+    
+    
+    void Reduce() {
+        while (number.Remainder(10) == 0) {
+            number.Divide(10);
+            --shift;
+        }
+    }
+};
+
+void Print(const Numb& n) {
+    
+    // we may try to divide first
+    if (n.shift <= 0) {
+        cout << n.number;
+        for (auto i = 0; i > n.shift; --i) {
+            cout << "0";
+        }
+    } else { 
+        auto pred_zeros = n.shift - n.number.digit_count();
+        if (pred_zeros < 0) {
+            
+        } else {
+        
+        }
+        cout << "0.";
+        for (auto i = 0; i < pred_zeros; ++i) {
+            cout << "0";
+        }
+        cout << n.number;
+    }
+}
+
+void Bring(Numb& n, Count sh) {
+    for (auto i = n.shift; i < sh; ++i) {
+        n.number.Mul(10);
+    }
+    n.shift = sh;
+}
+
+Numb Sum(Numb& n_1, Numb& n_2) {
+    Numb res;
+    auto m = max(n_1.shift, n_2.shift);
+    Bring(n_1, m);
+    Bring(n_2, m);
+    res.number = sum(n_1.number, n_2.number);
+    res.shift = m;
+    return res;
+}
+
+void DivideBy2(Numb& n) {
+    if (n.number.Remainder(2) != 0) {
+        n.number.Mul(10);
+        ++n.shift;
+    }
+    n.number.Divide(2);
+}
 
 
 class RelationshipDegree {
@@ -336,11 +660,14 @@ public:
     RelationshipDegree(int member_count, int have_parents_count) 
         : member_count_(member_count), have_parents_count_(have_parents_count), 
             parents_(member_count), has_parents_(member_count, false), level_(member_count),
-            degree_(member_count, member_count, UNKNOWN), related_(member_count_) {}
+            degree_(member_count, member_count, UNKNOWN), related_(member_count_) {
+        
+        
+    }
     
     
-    double Degree(int i_1, int i_2) {
-        if (degree_(i_1, i_2) != UNKNOWN) {
+    Numb& Degree(int i_1, int i_2) {
+        if (degree_(i_1, i_2).number != UNKNOWN) {
             return degree_(i_1, i_2);
         }
         
@@ -352,11 +679,12 @@ public:
         
         auto p_1 = parents_[i_2][0]; 
         auto p_2 = parents_[i_2][1];
-        auto d_1 = Degree(i_1, p_1);
-        auto d_2 = Degree(i_1, p_2);
-        auto d = 1/2. * (d_1 + d_2);
-        AddDegree(i_1, i_2, d);
-        return d;
+        auto& d_1 = Degree(i_1, p_1);
+        auto& d_2 = Degree(i_1, p_2);
+        auto d = Sum(d_1, d_2);
+        DivideBy2(d);
+        d.Reduce();
+        return AddDegree(i_1, i_2, d);
     }
     
     void Precompute() {
@@ -417,8 +745,8 @@ private:
         return false;
     }
 
-    void AddDegree(Index i_1, Index i_2, double d) {
-        degree_(i_1, i_2) = degree_(i_2, i_1) = d;
+    Numb& AddDegree(Index i_1, Index i_2, const Numb& d) {
+        return degree_(i_1, i_2) = degree_(i_2, i_1) = d;
     }
 
     Count member_count_;
@@ -426,94 +754,10 @@ private:
     vector<P> parents_;
     vector<bool> has_parents_;
     vector<int> level_;
-    Grid<double> degree_;
+    Grid<Numb> degree_;
     Relates<MAX_MEMBERS> related_;
     
 };
-
-
-// so we get grid of those guys;
-// we place negatives at the beginging;
-// when we open more values we place it there;
-// recursive calles are going to be expensive but we should be fine.
-// 
-
-
-struct Numb {
-	bigint number;
-	Count shift;
-}
-
-void Bring(Numb& n, Count sh) {
-	for (auto i = n.shift; i <= sh; ++i) {
-		Mul(n.number, 10);
-	}
-	n.shift = sh;
-}
-
-Numb Sum(const Numb& n_1, const Numb& n_2) {
-	Numb res;
-	auto m = max(n_1.shift, n_2.shift);
-	Bring(n_1, m);
-	Bring(n_2, m);
-	res.numb = sum(n_1.number, n_2.number);
-	res.shift = m;
-	return res;
-}
-
-void DivideBy2(Numb& n) {
-	if (n.number.remainder(2) != 0) {
-		n.number.mul(10);
-		++n.shift;
-	}
-	n.number.divide(2);
-}
-
-// something like this
-void IsDegreeComputed(Index i_1, Index i_2) {
- 	return !degree(i_1, i_2).IsNegative();
-}
-
-// d_1, d_2
-// s = Sum(d_1, d_2)
-// s.DivideBy2();
-// return s;
-// from recursive method should return reference to the object;
-// shouldn't be a big deal
-
-// how to output stuff...
-void Print(const Numb& n) {
-	
-	// we may try to divide first
-	if (n.shift == 0) {
-		// it's 0 or 1
-		
-	} else {
-		while (n.number.remainder(10) == 0) {
-			n.number.divide(10);
-			--n.shift;
-		}
-		
-		cout << "0.";
-		auto pred_zeros = n.shift - n.number.digit_count();
-		for (auto i = 0; i < pred_zeros; ++i) {
-			cout << "0";
-		}
-		cout << n.number;
-	}
-}
-
-template<class T>
-Count CountDigits(T t) {
-	Count count = 0;
-	while (t != 0) {
-		t /= 10;
-		++count;
-	}
-	return count;
-}
- 
-
 
 
 void solve(istream& cin, ostream& cout) {
@@ -544,7 +788,8 @@ void solve(istream& cin, ostream& cout) {
             cin >> m_1 >> m_2;
             --m_1;
             --m_2;
-            cout << rd.Degree(m_1, m_2) << '%' << endl;
+            Print(rd.Degree(m_1, m_2));
+            cout << '%' << endl;
         }
     }    
 }
@@ -552,19 +797,7 @@ void solve(istream& cin, ostream& cout) {
 
 int main(int argc, char **argv) {
     std::ios_base::sync_with_stdio(false);
-    //ifstream in("../in.txt");
+    ifstream cin("../in.txt");
     solve(cin, cout);
 }
-
-
-// we have to find exact degree and seems like double won't work for this one
-
-// we have to think about test cases
-// there are a lot of divisions by two
-
-
-// if i start with very big integer and try to later find out float part
-
-
-
 
