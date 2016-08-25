@@ -601,27 +601,29 @@ struct Numb {
     }
 };
 
-void Print(const Numb& n) {
+
+ostream& operator<<(ostream& cout, const Numb& n) {
+    string s = ToString(n);
     
-    // we may try to divide first
-    if (n.shift <= 0) {
-        cout << n.number;
-        for (auto i = 0; i > n.shift; --i) {
-            cout << "0";
-        }
-    } else { 
-        auto pred_zeros = n.shift - n.number.digit_count();
-        if (pred_zeros < 0) {
-            
-        } else {
-        
-        }
-        cout << "0.";
-        for (auto i = 0; i < pred_zeros; ++i) {
-            cout << "0";
-        }
-        cout << n.number;
-    }
+	auto pred_digits = n.number.digit_count() - n.shift;
+	auto i_s = 0;
+
+	for (i_s = 0; i_s < pred_digits; ++i_s) {
+		cout << s[i_s]; 
+	}
+	
+	if (pred_digits <= 0)
+		cout << "0";
+	}
+	if (n.shift > 0) {
+		cout << ".";
+	}
+	
+	auto pred_zeros = n.shift - n.number.digit_count();
+	for (auto i = 0; i < pred_zeros; ++i) {
+		cout << "0";
+	}
+	return cout << s.substr(i_s);
 }
 
 void Bring(Numb& n, Count sh) {
@@ -788,8 +790,7 @@ void solve(istream& cin, ostream& cout) {
             cin >> m_1 >> m_2;
             --m_1;
             --m_2;
-            Print(rd.Degree(m_1, m_2));
-            cout << '%' << endl;
+            cout << rd.Degree(m_1, m_2) << '%' << endl;
         }
     }    
 }
