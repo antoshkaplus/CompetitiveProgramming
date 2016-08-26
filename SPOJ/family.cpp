@@ -152,7 +152,7 @@ private:
     friend std::ostream& operator<<(std::ostream& output, const bigint& b);
     friend bigint division(const bigint& b, int small_numb);
     friend int remainder(const bigint& b, int small_numb);
-    
+    friend std::string ToString(const bigint& n);
     
     friend bool operator==(const bigint& b_1, const bigint& b_2);
     friend bool operator==(const bigint& b, int small);
@@ -168,6 +168,23 @@ struct bigint_view {
     Index i_end;
     bigint& base;
 };
+
+
+std::string ToString(const bigint& n_const) {
+    auto n = n_const; 
+    if (n.words_.empty()) {
+        return "0";
+    }
+    std::string s;
+    s.reserve(n.words_.size()*bigint::kWordDigitCount);
+    while (n != 0) {
+        int d = n.Remainder(10);
+        s.push_back(d + '0');
+        n.Divide(10);
+    }
+    std::reverse(s.begin(), s.end());
+    return s;
+}
 
 
 
@@ -603,16 +620,21 @@ struct Numb {
 
 
 ostream& operator<<(ostream& cout, const Numb& n) {
-    string s = ToString(n);
+    string s = ToString(n.number);
+    if (s == "0") s = "";
     
-	auto pred_digits = n.number.digit_count() - n.shift;
+    auto digit_count = n.number.digit_count();
+	auto pred_digits = digit_count - n.shift;
 	auto i_s = 0;
-
-	for (i_s = 0; i_s < pred_digits; ++i_s) {
+    
+	for (i_s = 0; i_s < min(digit_count, pred_digits); ++i_s) {
 		cout << s[i_s]; 
 	}
+    for (; i_s < pred_digits; ++i_s) {
+        cout << "0";
+    }
 	
-	if (pred_digits <= 0)
+	if (pred_digits <= 0) {
 		cout << "0";
 	}
 	if (n.shift > 0) {
@@ -623,7 +645,10 @@ ostream& operator<<(ostream& cout, const Numb& n) {
 	for (auto i = 0; i < pred_zeros; ++i) {
 		cout << "0";
 	}
-	return cout << s.substr(i_s);
+    if (i_s < s.size()) {
+        cout << s.substr(i_s);
+    }
+	return cout;
 }
 
 void Bring(Numb& n, Count sh) {
