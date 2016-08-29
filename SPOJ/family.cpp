@@ -821,6 +821,61 @@ void solve(istream& cin, ostream& cout) {
 }
 
 
+
+struct Test {
+	int member_count;
+	int base_count;
+	int query_count;
+	vector<S> children;
+	vector<P> queries;
+};
+
+Test test(int member_count = -1) {
+	default_random_engine rng;
+	if (member_count == -1) {
+		std::uniform_int_distribution member_distr(2, MAX_MEMBERS);
+		member_count = member_distr(rng);
+	}
+	std::uniform_int_distribution base_distr(2, member_count);
+	int base_count = base_distr(rng);
+	int sz = member_count - base_count;
+	vector<S> children(sz);
+	for (auto i = 0; i < sz; ++i) {
+		std::uniform_int_distribution d(base_count + i)
+		int p_1 = d(rng);
+		int p_2 = d(rng);
+		auto& ch = children[i];
+		ch.child = base_count + i;
+		ch.parents = {{p_1, p_2}};
+	}
+	std::uniform_int_distribution query_distr(1, member_count*member_count);
+	int query_count = query_distr(rng);
+	vector<P> queries(query_count);
+	for (auto i = 0; i < query_count; ++i) {
+		int m_1 = member_distr(rng);
+		int m_2 = member_distr(rng);
+		queries[i] = {{m_1, m_2}};
+	}
+	return Test{member_count, base_count, query_count, children, queries};	
+}
+
+void test() {
+	for (auto m : {{ 10, 20, 50, 100, 200, 300 }}) {
+		Test t = test(m);
+		int K = t.member_count - t.base_count;
+		RelationshipDegree rd(t.member_count, t.member_count - t.base_count);
+		for (auto& ch : t.children) {
+			rd.AddParents(ch.child, ch.parents);
+		}
+		rd.Precompute();
+		for (auto& p : t.queries) {
+			Print(rd.Degree(p[0], p[1]));
+			cout << '%' << endl;
+		}
+	}
+}
+
+
 int main(int argc, char **argv) {
     std::ios_base::sync_with_stdio(false);
     ifstream cin("../in.txt");
