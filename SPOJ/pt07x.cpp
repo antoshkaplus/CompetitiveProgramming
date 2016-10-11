@@ -8,29 +8,42 @@
 #include <queue>
 #include <map>
 #include <algorithm>
+#include <fstream>
+#include <array>
+
 
 using namespace std;
  
+ 
+using Index = int; 
+ 
+template<class T>
+using AdjacencyList = std::vector<std::vector<T>>;
+using NodeAdjacencyList = AdjacencyList<Index>; 
+ 
 const int MAX_NODES = 100000;
-int table[MAX_NODES][2]; 
 const int UNKNOWN = -1;
-// don't want to read directed tree.
-// instead rely on visit once flag
-bool visited[MAX_NODES] = {false};
+
+array<array<Index, 2>, MAX_NODES> table; 
+
+NodeAdjacencyList adj_list;
+
+const vector<Index>& adjacent(int v) {
+    return adj_list[v];
+} 
  
  
-int CountMinVertexCover(int root, bool colored) {
-	visited[root] = true;
-	if (table[root] != UNKNOWN) {
-		return table[root];
+int CountMinVertexCover(int root, int from, bool colored) {
+	if (table[root][colored] != UNKNOWN) {
+		return table[root][colored];
 	}
 	int root_count = 0;
 	for (auto a : adjacent(root)) {
-		if (visited[a]) continue;
-		auto a_count = CountMinVertexCover(a, !colored);
+		if (a == from) continue;
+		auto a_count = CountMinVertexCover(a, root, !colored);
 		// maybe if we try to color this node we get better result
 		if (colored) {
-			auto a_count_2 = CountMinVertexCover(a, colored);
+			auto a_count_2 = CountMinVertexCover(a, root, colored);
 			a_count = min(a_count, a_count_2);
 		}
 		root_count += a_count;
@@ -38,21 +51,37 @@ int CountMinVertexCover(int root, bool colored) {
 	if (colored) {
 		++root_count;
 	}
-	table[root][colored] = root_count;
+	return table[root][colored] = root_count;
 }
+
+
+void solve(istream& cin, ostream& cout) {
+    int N;
+    cin >> N;
+    int result;
+    if (N == 1) {
+        result = 1;
+    } else {
+        adj_list.resize(N);
+        table.fill({{UNKNOWN, UNKNOWN}});
+        for (auto i = 0; i < N-1; ++i) {
+            Index n_1, n_2;
+            cin >> n_1 >> n_2;
+            --n_1;
+            --n_2;
+            adj_list[n_1].push_back(n_2);
+            adj_list[n_2].push_back(n_1);
+        }
+        result = min(CountMinVertexCover(0, -1, true), CountMinVertexCover(0, -1, false));
+    }
+    cout << result << endl;
+}
+
 
 
 int main(int argc, char **argv) {
 	std::ios_base::sync_with_stdio(false);
-	int N;
-	cin >> N;
-	NodeAdjacencyList adj_list(N);
-	for (auto i = 0; i < N; ++i) {
-		Index n_1, n_2;
-		cin >> n_1 >> n_2;
-		adj_list[n_1].push_back(n_2);
-		adj_list[n_2].push_back(n_1);
-	}
-	cout << "The set can be {" << CountMinVertexCover(0) << "}" << endl;
+    ifstream cin("../in.txt");
+    solve(cin, cout);
 } 
  
