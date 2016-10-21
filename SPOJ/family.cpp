@@ -15,6 +15,8 @@
 #include <fstream>
 #include <bitset>
 #include <cassert>
+#include <random>
+#include <cstring>
 
 using namespace std;
 
@@ -258,6 +260,7 @@ bigint division(const bigint& b, int small_numb) {
         
     }
     w[0] /= small_numb;
+    if (w.back() == 0) w.pop_back();
     return bb;
 }
 
@@ -676,11 +679,11 @@ void DivideBy2(Numb& n) {
     n.number.Divide(2);
 }
 
+const Count MAX_MEMBERS = 300;
 
 class RelationshipDegree {
 
     const double UNKNOWN = -1;
-    static constexpr Count MAX_MEMBERS = 300;
     
 public:
     
@@ -830,27 +833,28 @@ struct Test {
 	vector<P> queries;
 };
 
-Test test(int member_count = -1) {
+Test createTest(int member_count = -1) {
 	default_random_engine rng;
 	if (member_count == -1) {
-		std::uniform_int_distribution member_distr(2, MAX_MEMBERS);
+		uniform_int_distribution<> member_distr(2, MAX_MEMBERS);
 		member_count = member_distr(rng);
 	}
-	std::uniform_int_distribution base_distr(2, member_count);
+	uniform_int_distribution<> base_distr(2, member_count);
 	int base_count = base_distr(rng);
 	int sz = member_count - base_count;
 	vector<S> children(sz);
 	for (auto i = 0; i < sz; ++i) {
-		std::uniform_int_distribution d(base_count + i)
+		uniform_int_distribution<> d(0, base_count + i - 1);
 		int p_1 = d(rng);
 		int p_2 = d(rng);
 		auto& ch = children[i];
 		ch.child = base_count + i;
 		ch.parents = {{p_1, p_2}};
 	}
-	std::uniform_int_distribution query_distr(1, member_count*member_count);
+	uniform_int_distribution<> query_distr(1, member_count*member_count);
 	int query_count = query_distr(rng);
 	vector<P> queries(query_count);
+    uniform_int_distribution<> member_distr(0, member_count-1);
 	for (auto i = 0; i < query_count; ++i) {
 		int m_1 = member_distr(rng);
 		int m_2 = member_distr(rng);
@@ -860,25 +864,28 @@ Test test(int member_count = -1) {
 }
 
 void test() {
-	for (auto m : {{ 10, 20, 50, 100, 200, 300 }}) {
-		Test t = test(m);
+	for (auto m : { 10, 20, 50, 100, 200, 300 }) {
+		Test t = createTest(m);
 		int K = t.member_count - t.base_count;
-		RelationshipDegree rd(t.member_count, t.member_count - t.base_count);
+		RelationshipDegree rd(t.member_count, K);
 		for (auto& ch : t.children) {
 			rd.AddParents(ch.child, ch.parents);
 		}
 		rd.Precompute();
 		for (auto& p : t.queries) {
-			Print(rd.Degree(p[0], p[1]));
-			cout << '%' << endl;
+			cout << rd.Degree(p[0], p[1]) << '%' << endl;
 		}
 	}
 }
 
 
+// now have to write correct brute force solution.
+
+
 int main(int argc, char **argv) {
     std::ios_base::sync_with_stdio(false);
-    ifstream cin("../in.txt");
-    solve(cin, cout);
+    //ifstream cin("../in.txt");
+    //solve(cin, cout);
+    test();
 }
 
