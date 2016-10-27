@@ -71,6 +71,35 @@ public:
     
 };
 
+struct Test {
+	vector<int64_t> xs;
+	int64_t a, b, c;
+}
+
+int64_t BruteForce(const Test& t) {
+	int N = t.xs.size();
+	
+	vector<int64_t> sum(N, 0);
+	sum[0] = t.xs[0];
+	for (int i = 1; i < N; ++i) {
+		sum[i] += sum[i-1] + t.xs[i];
+	}
+	
+	adjust = [](int k) {
+		// don't k-1 because k can equal 0
+		s = sum.back() - sum[k] + xs[k];
+		return t.a * s * s + t.b * s + t.c;
+	};
+	vector<int> dp(N+1, numeric_limits<int>::min());
+    dp[0] = 0
+	for (int i = 1; i <= N; ++i) {
+		for (int j = 0; j <= i-1; ++j) {
+			dp[i] = max(dp[i], dp[j] + adjust(j));
+		}
+    }
+	return dp.back();
+}
+
 
 int main(int argc, char **argv) {
     std::ios_base::sync_with_stdio(false);
@@ -99,7 +128,7 @@ int main(int argc, char **argv) {
         //		}
         //	}
         
-        vector<int64_t> sum(N);
+        vector<int64_t> sum(N, 0);
         sum[0] = xs[0];
         for (int i = 1; i < N; ++i) {
             sum[i] += sum[i-1] + xs[i];
