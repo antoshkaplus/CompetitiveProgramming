@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
 	int T;
 	cin >> T;
 	for (auto t = 0; t < T; ++t) {
-		int N;
+		int N, K;
 		cin >> N >> K;
 		vector<int> A(K+1, N+1);
 		A[0] = 0;
