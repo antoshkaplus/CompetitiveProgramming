@@ -28,6 +28,7 @@ int main() {
             if (fw.Dist(A, B) < L) continue;
             
             fw.AddDirectedDist(A, B, L);
+			fw.AddDirectedDist(B, A, L);
         }
         fw.Compute();
         
@@ -37,6 +38,13 @@ int main() {
                 bm.addDirEdge(from_i, to_i, fw.Dist(from_i, to_i, from[from_i]));
             }
         }
+		
+		auto matching = bm.Compute();
+		set<int> s;
+		for (auto& m : matching) {
+			s.insert(m.to);
+		}
+		cout << s.size() << endl;
     }
 
 }
