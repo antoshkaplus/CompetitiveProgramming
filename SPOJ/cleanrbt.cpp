@@ -2,7 +2,6 @@
 // https://github.com/cacophonix/SPOJ/blob/master/CLEANRBT.cpp
 
 
-
 #include <iostream>
 #include <string>
 #include <cmath>
@@ -15,188 +14,123 @@
 #include <algorithm>
 #include <functional>
 #include <bitset>
+#include <unordered_map>
+
 
 using namespace std;
 
 
-// this is template because we don't want to use extra memory if there would be
-// small number of vertices, but graph is dense, or we need to keep many of them
-template<class T>
-using AdjacencyList = std::vector<std::vector<T>>;
+int STATE_MAX = 1 << 10;
+int t[H_MAX][W_MAX][STATE_MAX];
+int g[H_MAX+2][W_MAX+2];
 
-using NodeAdjacencyList = AdjacencyList<Index>;
-using Edge = std::array<Index, 2>;
+int WALL = 'x';
+int DIRTY = '*';
+int ROBOT = 'o';
+int CLEAN = '.';
 
-NodeAdjacencyList EdgesToAdjacencyList(const std::vector<Edge>& edges, size_t node_count);
-
-
-// struct provides access on reading. 
-// const prevents alternating variables 
-// immutable class
-// like wrapper
-// can't use unique_ptr here or will be unable to copy
-template <class NodeAdjacencyListPtr, 
-EnableIf<IsAnySame<NodeAdjacencyListPtr, std::shared_ptr<const NodeAdjacencyList>, 
-const NodeAdjacencyList* >> = enabler >
-struct Graph {
-    
-    NodeAdjacencyListPtr adjacency_list_;
-    
-    Graph(NodeAdjacencyListPtr adj_list) : adjacency_list_(adj_list) {}  
-    
-    Count degree(Index i) const {
-        return (*adjacency_list_)[i].size();
-    }
-    
-    const std::vector<Index>& adjacent(Index i) const {
-        return (*adjacency_list_)[i];
-    }
-    
-    Count node_count() const {
-        return adjacency_list_->size();
-    }
-    
-    Count CountEdges() const {
-        Count c = 0;
-        for (auto i = 0; i < node_count(); ++i) {
-            c += adjacent(i).size();
-        }
-        return c;
-    }
-    
-    // completeness between 0 and 1 : ratio of edges
-    static Graph Random(Count node_count, double completeness) {
-        std::default_random_engine rng;
-        std::uniform_real_distribution<> distr;
-        NodeAdjacencyList *adj_list_ptr = new NodeAdjacencyList(node_count);
-        NodeAdjacencyList& adj_list = *adj_list_ptr;
-        for (auto i = 0; i < node_count; ++i) {
-            for (auto j = i+1; j < node_count; ++j) {
-                if (distr(rng) < 0.5) continue;
-                adj_list[i].push_back(j);
-                adj_list[j].push_back(i);
-            }
-        }        
-        return Graph(std::shared_ptr<NodeAdjacencyList>(adj_list_ptr));       
-    }
-    
-    // and now we have to do a bunch of definitions... it sucks pretty bad
-    
-    
+struct Item {
+	// state and moves come from previous entry
+	int h, w, state, moves;
+	
+	Item(int h, int w, int state, int moves)
+		: h(h), w(w), state(state), moves(moves) {}
 };
 
-// with this bullshit you hide nothing
-// everything is exposed.
-// there is no OOP programming with this shit
-Graph<std::shared_ptr<const NodeAdjacencyList>> CreateGraph(const std::shared_ptr<const NodeAdjacencyList>& ptr);
-Graph<std::shared_ptr<const NodeAdjacencyList>> CreateGraph(const std::shared_ptr<NodeAdjacencyList>& ptr);
+int set(int cur, int index) {
+	return cur | (1 << index);	
+}
 
-Graph<const NodeAdjacencyList*> CreateGraph(const NodeAdjacencyList* ptr);
-Graph<const NodeAdjacencyList*> CreateGraph(const NodeAdjacencyList& ptr);
+const int[] dh = {-1, 0, 1, 0};
+const int[] dw = { 0,-1, 0, 1};
+
+int N;
+int end_state;
+
+vector<string> board;
+
+int robot_r;
+int robot_c;
+
+void init() {
+	for (int r = 0; r <= H+1; ++r) {
+		g[r][0] = g[r][W+1] = WALL;
+	}
+	for (int c = 0; c <= W+1; ++c) {
+		g[0][c] = g[H+1][c] = WALL;
+	}
+	N = 0;
+	for (int r = 1; r <= H; ++r) {
+		for (int c = 1; c <= W; ++c) {
+			auto v = t[r-1][c-1];
+			fill_n(v, set(0, N));
+			g[r][c] = board[r-1][c-1];
+			if (g[r][c] == DIRTY) {
+				g[r][c] = 'A' + N++;
+			}
+			if (g[r][c] == ROBOT) {
+				g[r][c] = EMPTY;
+				v[0] = 0;
+				robot_r = r;
+				robot_c = c;
+			}
+		}
+	}
+	
+	end_state = 0;
+	for (int i = 0; i < N; ++i) {
+		end_state = set(end_state, i); 
+	} 
+}
 
 
-class GraphBuilder {
-    
-    int node_count_;
-    NodeAdjacencyList adj_list_;
-    
-    GraphBuilder(int node_count) 
-    : node_count_(node_count), adj_list_(node_count) {}
-    
-    void AddEdge(int i_1, int i_2) {
-        adj_list_[i_1].push_back(i_2);
-        adj_list_[i_2].push_back(i_1);
-    }
-    
-    Graph<std::shared_ptr<const NodeAdjacencyList>> Build() {
-        return Graph<std::shared_ptr<const NodeAdjacencyList>>(std::make_shared<const NodeAdjacencyList>(std::move(adj_list_)));
-    }
-    
-};
-
-// process can return boolean value: if true, then terminate early
-template<class Process, class AdjacencyListPtr>
-void BFS(const Graph<AdjacencyListPtr>& gr, Index v, Process& pr) {
-    std::queue<Index> q;
-    Count c = gr.node_count();
-    std::vector<bool> visited(c, false);
-    visited[v] = true;
-    q.push(v);
-    while (!q.empty()) {
-        v = q.front();
-        q.pop();
-        // should we also pass from where we came from
-        bool b = pr(v);
-        if (b) return;
-        for (Index w : gr.adjacent(v)) {
-            if (!visited[w]) {
-                visited[w] = true;
-                q.push(w);
-            }
-        }
-    }
+// minimum moves to get over everything
+int solve() {
+	queue<Item> q;
+	q.emplace(robot_r, robot_c, 0, 0);
+	while (!q.empty()) {
+		auto p = q.top();
+		q.pop();
+		auto val = g[p.h][p.w];
+		if (val == WALL) {
+			continue;
+		} 
+		
+		++p.moves;
+		// use letters 
+		if (val != CLEAN) {
+			auto index = val-'A';
+			p.state = set(p.state, index);
+		}
+		if (p.state == end_state) return p.moves;
+		
+		if (t[p.h-1][p.w-1][p.state] != -1) {
+			continue;
+		}
+		
+		t[p.h-1][p.w-1][p.state] = p.moves;
+		for (auto i = 0; i < 4; ++i) {
+			int h = p.h + dh[i];
+			int w = p.w + dw[i];
+			q.emplace(h, w, p.state, p.moves);
+		}
+	}
+	return -1;
 }
 
 
 int main(int argc, char **argv) {
-    std::ios_base::sync_with_stdio(false);
-    
-    for (;;) {
-        int W, H;
-        cin >> W >> H;
-        if (W == 0 && H == 0) break;
-        
-        Grid<char> field(H, W);
-        for (auto i = 0; i < H; ++i) {
-            string s;
-            cin >> s;
-            for (int j = 0; j < W; ++j) {
-                field(i, j) = s[j]; 
-            }
-        }
-        Grid<int> g(H+2, W+2, -1);
-        int i = 0;
-        auto f = [&](const Position& p) {
-            switch (field[p]) {
-                case '*':
-                case 'o':
-                case '.':
-                    g[p] == i++;
-                    break;
-                default:
-                    break;
-            }
-        };
-        g.ForEachPosition(f);
-        GraphBuilder builder(i);
-        for (auto i = 1; i <= H; ++i) {
-            for (auto j = 1; j <= W; ++j) {
-                if (g(i, j) == -1) continue;
-                
-                if (g(i+1, j) != -1) builder.AddEdge(g(i, j), g(i+1, j));
-                if (g(i, j+1) != -1) builder.AddEdge(g(i, j), g(i, j+1));
-                if (g(i-1, j) != -1) builder.AddEdge(g(i, j), g(i-1, j));
-                if (g(i, j-1) != -1) builder.AddEdge(g(i, j), g(i, j-1));
-            }
-        }
-        // now we look for robo and other guys.
-        vector<Index>
-        auto pr = [](Index v) {
-            
-        }
-        
-        // find robo and other guys and look for distances between them
-        
-        
-        // eventually you get a matrix with all the distances
-        // and here you start something called TSP
-        
-        // that's a lot of coding but we can't make it faster
-        
-        
-        
-        // or can be dp approach
-    }
-    
-
+	std::ios_base::sync_with_stdio(false);
+	for (;;) {
+		cin >> W >> H;
+		if (W == 0 && H == 0) {
+			break;
+		}
+		board.resize(H);
+		for (auto& b : board) {
+			cin >> b;
+		}
+		init();
+		cout << solve() << endl;
+	}
 }
