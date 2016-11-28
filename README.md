@@ -7,6 +7,8 @@ TODO:
 * PRJAN15E
 * MTOTALF
 * FASTFLOW
+* sliding windows:
+    KPMATRIX, MATRIX2
 
 Best practices:
   use method with following signature

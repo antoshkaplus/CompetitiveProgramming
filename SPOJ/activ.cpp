@@ -79,7 +79,6 @@ int main(int argc, char **argv) {
         a.Check();
         if (r >= A::FACTOR) throw runtime_error("");
         // have to substract empty set
-        //printf("%08d\n", abs(r-1));
-        cout << setfill('0') << setw(8) << abs(r-1) << endl;
+        cout << setfill('0') << setw(8) << ((r == 0 ? A::FACTOR : r) - 1) << endl;
     }
 }

@@ -72,7 +72,7 @@ int LongestIncreasingSubsequenceLength(std::vector<T> &v) {
             // this guy has to be rewritten
             int index = CeilIndex(tail, -1, length-1, v[i]);
             
-            tail[] = v[i];
+            tail[index] = v[i];
     }
     
     return length;

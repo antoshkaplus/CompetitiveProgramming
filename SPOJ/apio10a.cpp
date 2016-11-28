@@ -8,6 +8,7 @@
 #include <queue>
 #include <map>
 #include <algorithm>
+#include <functional>
 
 using namespace std;
 
@@ -72,32 +73,32 @@ public:
 };
 
 struct Test {
-	vector<int64_t> xs;
-	int64_t a, b, c;
-}
+    vector<int64_t> xs;
+    int64_t a, b, c;
+};
 
 int64_t BruteForce(const Test& t) {
-	int N = t.xs.size();
-	
-	vector<int64_t> sum(N, 0);
-	sum[0] = t.xs[0];
-	for (int i = 1; i < N; ++i) {
-		sum[i] += sum[i-1] + t.xs[i];
-	}
-	
-	adjust = [](int k) {
-		// don't k-1 because k can equal 0
-		s = sum.back() - sum[k] + xs[k];
-		return t.a * s * s + t.b * s + t.c;
-	};
-	vector<int> dp(N+1, numeric_limits<int>::min());
-    dp[0] = 0
-	for (int i = 1; i <= N; ++i) {
-		for (int j = 0; j <= i-1; ++j) {
-			dp[i] = max(dp[i], dp[j] + adjust(j));
-		}
+    int N = t.xs.size();
+    
+    vector<int64_t> sum(N, 0);
+    sum[0] = t.xs[0];
+    for (int i = 1; i < N; ++i) {
+        sum[i] += sum[i-1] + t.xs[i];
     }
-	return dp.back();
+    
+    auto adjust = [&](int k) {
+        // don't k-1 because k can equal 0
+        auto s = sum.back() - sum[k] + t.xs[k];
+        return t.a * s * s + t.b * s + t.c;
+    };
+    vector<int64_t> dp(N+1, numeric_limits<int>::min());
+    dp[0] = 0;
+    for (int i = 1; i <= N; ++i) {
+        for (int j = 0; j <= i-1; ++j) {
+            dp[i] = max(dp[i], dp[j] + adjust(j));
+        }
+    }
+    return dp.back();
 }
 
 
