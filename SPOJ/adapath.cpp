@@ -16,6 +16,92 @@ using Count = int;
 using Index = int;
 using Int = int;
 
+using Direction = int;
+
+constexpr Direction kDirUp = 0;
+constexpr Direction kDirDown = 1;
+constexpr Direction kDirRight = 2;
+constexpr Direction kDirLeft = 3;    
+
+
+// make it possible to substruct
+struct Indent {
+    constexpr Indent() : Indent(0, 0) {}
+    constexpr Indent(Int row, Int col) : row(row), col(col) {}
+    
+    void set(Int row, Int col) {
+        this->row = row;
+        this->col = col;
+    }
+    
+    Int area() const {
+        return row*col;
+    }
+    
+    Int row, col;
+};
+
+struct Position {
+    // operators see below
+    constexpr Position() : Position(0, 0) {}
+    constexpr Position(Int row, Int col) : row(row), col(col) {}
+    
+    //Position(Int row, Int col) : row(row), col(col) {}
+    
+    void set(Int row, Int col) {
+        this->row = row;
+        this->col = col;
+    }
+    
+    void shift(Int row, Int col) {
+        this->row += row;
+        this->col += col;
+    }
+    
+    Position& operator+=(const Indent& indent) {
+        row += indent.row;
+        col += indent.col;
+        return *this;
+    }
+    
+    Position& operator=(const Position& p) {
+        row = p.row;
+        col = p.col;
+        return *this;
+    }
+    
+    void swap() {
+        std::swap(row, col);
+    }
+    Position swapped() const {
+        return Position(col, row);
+    }
+    
+    Position shifted(Int row_shift, Int col_shift) const {
+        return {row + row_shift, col + col_shift};
+    }
+    
+    
+    Int row, col;
+    
+    struct TopLeftComparator {
+        bool operator()(const Position& p_0, const Position& p_1) {
+            return p_0.row < p_1.row || (p_0.row == p_1.row && p_0.col < p_1.col);
+        }
+    };
+    struct BottomRightComparator {
+        bool operator()(const Position& p_0, const Position& p_1) {
+            return p_0.row > p_1.row || (p_0.row == p_1.row && p_0.col > p_1.col);
+        }
+    };
+};   
+
+
+Position operator+(const Position& p, const Indent& n) {
+    return {p.row + n.row, p.col + n.col};
+}        
+
+
 template<class T>
 struct Grid {
     using value_type = T;
@@ -63,6 +149,13 @@ struct Grid {
         return grid_[row*col_count_ + col];
     }
     
+    T& operator[](const Position& p) {
+        return grid_[p.row*col_count_ + p.col];
+    }
+    const T& operator[](const Position& p) const {
+        return grid_[p.row*col_count_ + p.col];
+    }
+    
     // function takes in element
     template<class Process>
     void ForEach(Process& proc) {
@@ -73,12 +166,287 @@ struct Grid {
         }
     }
     
+    // proc args:
+    //      grid itself
+    //      from direction
+    //      position to process
+    template<class Process>
+    void ForEachNearby(const Position& t, Process& proc) {
+        if (t.row > 0) {
+            proc(*this, kDirDown, t+Indent{-1, 0});
+        }
+        if (t.row < row_count_-1) {
+            proc(*this, kDirUp, t+Indent{ 1, 0});
+        }
+        if (t.col > 0) {
+            proc(*this, kDirRight, t+Indent{ 0,-1});
+        }
+        if (t.col < col_count()-1) {
+            proc(*this, kDirLeft, t+Indent{ 0, 1});
+        }
+    }
+    
+    // proc arg: const Position&
+    template<class Process> 
+    void ForEachPosition(Process& proc) const {
+        for (Index r = 0; r < row_count(); ++r) {
+            for (Index c = 0; c < col_count(); ++c) {
+                proc(Position{r, c});
+            }
+        }
+    } 
+    
+    
 private:
     
     Count row_count_, col_count_;
     std::vector<T> grid_;
 };
 
+
+
+template<class NodeType, class EdgeType>
+class DirEdgedGraphBuilder;
+
+template<class NodeType, class EdgeType>
+class UndirEdgedGraphBuilder;
+
+// we are providing something like interface
+
+// this class is going to be used both, by directed graphs and undirected graphs.
+// the difference is only in how you build it.
+template<class T>
+class Graph {
+public:
+    // somewhere should be typename
+    using NodeType = T;
+    
+private:
+    std::vector<std::vector<NodeType>> nextNodes_;
+    
+public:
+    const std::vector<NodeType>& nextNodes(NodeType n) const {
+        return nextNodes_[n];
+    }
+    
+    Count nodeCount() const {
+        return nextNodes_.size();
+    }
+    
+    template<class NodeType, class EdgeType>
+    friend class DirEdgedGraphBuilder; 
+    template<class NodeType, class EdgeType>
+    friend class UndirEdgedGraphBuilder; 
+    
+};
+
+template<class T, class E>
+class EdgedGraph : public Graph<T> {
+public:
+    
+    using NodeType = T;
+    using EdgeType = E;
+    
+    using Graph<T>::nextNodes;
+    
+private:    
+    std::vector<std::vector<EdgeType>> nextEdges_;
+    int edgeCount_;
+    
+public:    
+    const std::vector<EdgeType>& nextEdges(NodeType n) const {
+        return nextEdges_[n];
+    }
+    
+    Count edgeCount() const {
+        return edgeCount_;
+    }
+    
+    struct Pair {
+        NodeType node;
+        EdgeType edge;
+    };
+    
+    using V_IT = typename std::vector<NodeType>::const_iterator;
+    using D_IT = typename std::vector<EdgeType>::const_iterator;
+    
+    struct Iterator : public std::iterator<std::random_access_iterator_tag, Pair> {
+        
+        Iterator(V_IT vIt, D_IT dIt) 
+        : vIt(vIt), dIt(dIt) {}
+        
+        bool operator<(const Iterator it) const {
+            return vIt < it.vIt;
+        }
+        
+        bool operator!=(const Iterator it) const {
+            return vIt != it.vIt;
+        }
+        
+        Iterator& operator+=(Count count) {
+            vIt += count;
+            dIt += count;
+        }
+        
+        Iterator& operator-=(Count count) {
+            vIt -= count;
+            dIt -= count;
+        }  
+        
+        Iterator& operator++() {
+            ++vIt;
+            ++dIt;
+            return *this; 
+        }
+        
+        Pair operator*() {
+            return {*vIt, *dIt};
+        }
+        
+    private:
+        V_IT vIt;
+        D_IT dIt;
+    };
+    
+    // should better use const
+    struct S {
+        S(const std::vector<NodeType>& vs, const std::vector<EdgeType>& ds)
+        : vs(&vs), ds(&ds) {}
+        
+        Iterator begin() {
+            return Iterator(vs->begin(), ds->begin());
+        }
+        
+        Iterator end() {
+            return Iterator(vs->end(), ds->end());
+        }
+        
+        const std::vector<NodeType>* vs;
+        const std::vector<EdgeType>* ds;
+    };
+    
+    S nextPairs(NodeType i) const {
+        return S(nextNodes(i), nextEdges(i));
+    }
+    
+    friend class DirEdgedGraphBuilder<NodeType, EdgeType>; 
+    friend class UndirEdgedGraphBuilder<NodeType, EdgeType>;
+};
+
+template<class NodeType, class EdgeType>
+class DirEdgedGraphBuilder {
+protected:
+    Index newEdge = 0;
+    EdgedGraph<NodeType, EdgeType> g_;
+    
+public:
+    DirEdgedGraphBuilder(Count nodeCount) {
+        g_.nextNodes_.resize(nodeCount);
+        g_.nextEdges_.resize(nodeCount);
+    }
+    
+    virtual EdgeType add(NodeType from, NodeType to) {
+        g_.nextNodes_[from].push_back(to);
+        g_.nextEdges_[from].push_back(newEdge);
+        return newEdge++;
+    }
+    
+    EdgedGraph<NodeType, EdgeType> build() {
+        g_.edgeCount_ = newEdge;
+        return std::move(g_);
+    }
+};
+
+template<class NodeType>
+struct DirGraphBuilder {
+    
+    Graph<NodeType> g_;
+    
+    DirGraphBuilder(Count nodeCount) {
+        g_.nextNodes_.resize(nodeCount);
+    }
+    
+    virtual void add(NodeType from, NodeType to) {
+        g_.nextNodes_[from].push_back(to);
+    }
+    
+    Graph<NodeType> build() {
+        return std::move(g_);
+    }
+    
+    friend class Graph<NodeType>;
+};
+
+template<class NodeType, class EdgeType>
+class UndirEdgedGraphBuilder : DirEdgedGraphBuilder<NodeType, EdgeType> {
+    
+    using DirEdgedGraphBuilder<NodeType, EdgeType>::g_;
+    using DirEdgedGraphBuilder<NodeType, EdgeType>::newEdge;
+public:
+    
+    using DirEdgedGraphBuilder<NodeType, EdgeType>::build;
+    using DirEdgedGraphBuilder<NodeType, EdgeType>::DirEdgedGraphBuilder;
+    // use constructor of base class
+    
+    virtual EdgeType add(NodeType from, NodeType to) {
+        g_.nextNodes_[from].push_back(to);
+        g_.nextNodes_[to].push_back(from);
+        g_.nextEdges_[from].push_back(newEdge);
+        g_.nextEdges_[to].push_back(newEdge);
+        return newEdge++;
+    }
+    
+    friend class Graph<NodeType>;
+    friend class EdgedGraph<NodeType, EdgeType>;
+};
+
+template<class NodeType>
+struct UndirGraphBuilder : DirGraphBuilder<NodeType> {
+    
+    using DirGraphBuilder<NodeType>::g_;
+    
+    virtual void add(NodeType from, NodeType to) {
+        g_.nextNodes_[from].push_back(to);
+        g_.nextNodes_[to].push_back(from);
+    }
+    
+    friend class Graph<NodeType>;
+};
+
+
+
+enum class BFS_Flow {
+    // don't expand on children
+    Skip,
+    Continue,
+    Terminate
+};
+
+// we try to Skip before visiting the node, because 
+// in current version of algorithm we are about of visiting edges.
+// by skipping we cancel addition of outgoing edges from second endpoint   
+template<class Process, class EdgedGraph>
+void BFS_PrevEdged(const EdgedGraph& gr, Index v, Process& pr) {
+    std::queue<Index> q;
+    Count c = gr.nodeCount();
+    std::vector<bool> visited(c, false);
+    visited[v] = true;
+    q.push(v);
+    while (!q.empty()) {
+        v = q.front();
+        q.pop();
+        for (auto p : gr.nextPairs(v)) {
+            auto w = p.node;
+            if (!visited[w]) {
+                BFS_Flow flow = pr(w, v, p.edge);
+                if (flow == BFS_Flow::Terminate) return;
+                if (flow == BFS_Flow::Skip) continue;
+                visited[w] = true;
+                q.push(w);
+            }
+        }
+    }
+}
 
 
 
@@ -230,6 +598,8 @@ class MaxBipartiteMatching {
     
 public:
     
+    MaxBipartiteMatching() : builder_(0) {}
+    
     MaxBipartiteMatching(std::vector<Count> from, std::vector<Count> to) : builder_(0) {
         fromStart_ = 0;
         toStart_ = from.size();
@@ -282,6 +652,10 @@ public:
     
     IndexMap() : newIndex_(0) {}
     
+    bool exists(const Key& key) const {
+        return m_.count(key) != 0;
+    }
+    
     Index index(const Key& key) {
         auto p = m_.emplace(key, newIndex_);
         if (p.second) {
@@ -313,59 +687,60 @@ private:
 
 int main() {
 	
+    
     int T;
     cin >> T;
     auto read = [](int& r) {
-        cin >> r;
+        cin >> r; --r;
     };
     for (auto t = 0; t < T; ++t) {
         int N;
         cin >> N;
         Grid<int> g(N, N);
         g.ForEach(read);
-    }
-    
-    auto k = 1;
-    IndexMap<int> next;
-    auto index = [&](const Position& p) {
-        return p.row*N + p.col;
-    }
-    map<int, vector<int>> curToNext;
-    auto handle = [&](const Position& p) {
-        if (g[p] == k) {
-            
+        
+        auto toIndex = [=](const Position& p) {
+            return p.row*N + p.col;
+        };
+        auto toPos = [=](const Index i) {
+            return Position(i/N,i%N);
+        };
+        
+        IndexMap<int> ms[10];
+        
+        auto func = [&] (const Position& p) {
+            ms[g[p]].index(toIndex(p));
+        };
+        g.ForEachPosition(func);
+        
+        int k;
+        Index idx;
+        MaxBipartiteMatching matching;
+        auto handle = [&](const Grid<int>& g, int dir, const Position& pos) {
+            if (g[pos] == k+1) {
+                matching.addDirEdge(idx, ms[k+1].index(toIndex(pos)), 1);
+            }
+        };
+        
+        bool yes = true;
+        for (k = 0; k < 9; ++k) {
+            vector<int> from(ms[k].size(), 1);
+            vector<int> to(ms[k+1].size(), 1);
+            matching = MaxBipartiteMatching(from, to);
+            for (auto p : ms[k]) {
+                idx = p.second;
+                g.ForEachNearby(toPos(p.first), handle);
+            }
+            auto mmm = matching.Compute();
+            set<int> s;
+            for (auto& m : mmm) {
+                s.insert(m.to);
+            }
+            if (s.size() != to.size()) {
+                yes = false;
+                break;
+            }
         }
+        cout << (yes ? "YES" : "NO") << endl; 
     }
-    
-    for (; k < 10; ++k) {
-        g.ForEachPosition()
-        // how many
-        MaxBipartiteMatching matching()
-    }
-    
-    
-	auto b = readBoard();
-	// so we have a grid
-	// have some values that we would want to skipws
-	
-	g
-	// another board is with numbers
-	
-	// if would have time replace
-	auto func = [&](const Position& p, const Position& from) {
-		if (b[p] > b[from]) {
-			++g[p];
-			return Continue;
-		}
-		return Skip;
-	}
-	
-	
-	// you find all 1-s and laaunch BFS from it
-	BFS_Prev(b, func);
-
-	// so you end up with a bunch of stupid stuff
-	
-	
-	
 }
