@@ -89,22 +89,104 @@ struct Rect {
 };
 
 
+enum class CarpetEvent {
+    Start,
+    Finish
+};
+
+
+struct Event {
+    CarpetEvent type;
+    int x;
+    int bot;
+    int top;
+    
+    bool operator<(const Event& ev) const {
+        return x < ev.x;
+    }
+    
+};
+
+// segments should be sorted by x_1, and then by x_2 (not length)
+
+vector<Segment> mergeSegments(vector<Segment>& segs) {
+    vector<Segment> res;
+    res.push_back(segs[0]);
+    for (auto i = 1; i < segs; ++i) {
+        if (res.back().isIntersect(segs[i])) {
+            res.back() = united(res, segs[i]);
+        } else {
+            res.push_back(segs[i]);
+        }
+    }
+    return res;
+}
+
+// looks pretty good...
+ 
+vector<Segment> buildEmptySegments(Segment empty, vector<Segment>& filled) {
+    vector<Segment> res;
+    for (auto f : filled) {
+        // this one is only for first f basically
+        if (empty.first() != f.first()) {
+            res.push_back(empty.first(), f.first());
+        }
+        empty.first() = f.last();
+    }
+    if (empty.first() != empty.last()) {
+        res.push_back(empty);
+    }
+    return res;
+}
+
+
+
 int main() {
 	int T;
 	cin >> T;
 	for (int t = 0; t < T; ++t) {
-		// grid, carpets, pipes
+		// grid (M(x), N(y)), carpets, pipes
 		int M, N, K, L;
 		cin >> M >> N >> K >> L;
-		vector<Rect> rects;
-		for (int i = 0; i < K; ++i) {
+		vector<Event> events; 
+		events.emplace_back(CarpetEvent::Finish, 0, 0, N);
+        events.emplace_back(CarpetEvent::Start, M, 0, N);
+        
+        for (int i = 0; i < K; ++i) {
+            // lower left, upper right
 			int x_1, y_1, x_2, y_2;
 			cin >> x_1 >> y_1 >> x_2 >> y_2;
-			rects.emplace(x_1, y_1, x_2, y_2);
+			events.emplace_back(CarpetEvent::Start, x_1, y_1, y_2);
+            events.emplace_back(CarpetEvent::Finish, x_2, y_1, y_2);
 		}
 		// beginning
-		sort(rects.begin(), rects.end());
-		auto rect_ends = rects;
+		sort(events.begin(), events.end());
+		vector<Segment> all_segments;
+        int prev_x = -1;
+        vector<Segment> prevEmpty;
+        for (auto i = 0; i < events.size(); ++i) {
+                
+            auto& ev = events[i];
+            
+            Segment s(ev.bot, ev.top-ev.bot);
+            if (ev.type == CarpetEvent::Start) {
+                all_segments.push_back();
+            } else { // Finish
+                all_segments.erase(find(all_segments.begin(), all_segments.end(), s));
+            }
+            
+            // maybe not yet handle and need to pick up more guys
+            
+            auto merged = mergeSegments(all_segments);
+            auto empty = buildEmptySegments({0, N}, merged);
+            
+            // we have to add areas now
+            
+            
+        }
+        
+        
+        auto rect_ends = rects;
 		// ends
 		sort(rect_ends.begin(), rect_ends.end());
 		
