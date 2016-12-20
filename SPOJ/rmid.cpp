@@ -7,6 +7,8 @@
 
 using namespace std;
 
+// have to use static memory
+
 void slow_solution() {
     std::ios_base::sync_with_stdio(false);
     while(!cin.eof()) {
@@ -20,7 +22,8 @@ void slow_solution() {
             
             if (x == -1) {
                 int sz = seq.size();
-                cout << *mid << endl;
+                printf("%d\n", *mid);
+                //cout << *mid << endl;
                 mid = seq.erase(mid);
                 
                 if (sz%2 == 0) {
@@ -45,8 +48,6 @@ void slow_solution() {
                 }
             }
         }
-        std::string s;
-        getline(cin, s);
         cout << endl;
     }
 }
@@ -92,5 +93,5 @@ void fast_solution() {
 }
 
 int main() {
-    fast_solution();
+    slow_solution();
 }
