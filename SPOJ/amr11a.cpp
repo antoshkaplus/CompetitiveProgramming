@@ -150,51 +150,36 @@ private:
 };
 
 
-int main(int argc, char **argv) {
+int main() {
     std::ios_base::sync_with_stdio(false);
     
-    int test_case = 0;
-    for (;;) {
-        int H, W;
-        cin >> H >> W;
-        if (H == 0 && W == 0) {
-            break;
-        }
-        ++test_case; 
+    int T;
+    cin >> T;
+    for (auto t = 0; t < T; ++t) {
+        int R, C;
+        cin >> R >> C;
+        Grid<int> g(R, C);
         
-        Grid<int> g(H, W);
-        string s;
-        for (auto i = 0; i < H; ++i) {
-            cin >> s;
-            for (auto j = 0; j < W; ++j) {
-                g(i, j) = s[j] - 'A';
+        for (auto& elem : g) {
+            cin >> elem;
+        }
+        
+        for (auto r = R-1; r >= 0; --r) {
+            for (auto c = C-1; c >= 0; --c) {
+                if (r == R-1 && c == C-1) continue;
+                auto elem = g(r, c); 
+                auto res = numeric_limits<int>::min();
+                if (r+1 < R) {
+                    res = max(res, g(r+1, c) + elem);
+                }
+                if (c+1 < C) {
+                    res = max(res, g(r, c+1) + elem);
+                }
+                g(r, c) = min(0, res);
             }
         }
         
-        vector<Position> vis;
-        auto func = [&](const Position& p) {
-            if (g[p] == 0) vis.push_back(p);
-        };
-        g.ForEachPosition(func);
-        vector<Position> next;
-        auto res = 0;
-        auto func_2 = [&](const Position& p, const Position& from) {
-            if (g[p] == res) {
-                next.push_back(p);
-            }
-        };
-        while (!vis.empty()) {
-            ++res;
-            while (!vis.empty()) {
-                g.ForEachAround(vis.back(), func_2);
-                vis.pop_back();
-            }
-            sort(next.begin(), next.end(), Position::TopLeftComparator());
-            next.erase(unique(next.begin(), next.end()), next.end());
-            swap(vis, next);
-            next.clear();
-        }
-        
-        cout << "Case " << test_case << ": " << res << endl;
+        cout << -g(0, 0)+1 << endl;
     }
+    
 }

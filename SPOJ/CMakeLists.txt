@@ -27,5 +27,5 @@ file(GLOB PROBLEM_FILES "./*.cpp")
 
 foreach(FILE ${PROBLEM_FILES})
     get_filename_component(PROBLEM_NAME ${FILE} NAME_WE)
-    add_executable(${PROBLEM_NAME} ${FILE})
+    add_executable("ex_${PROBLEM_NAME}" ${FILE})
 endforeach(FILE)

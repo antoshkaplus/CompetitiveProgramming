@@ -217,104 +217,79 @@ public:
 };
 
 
+template <class T, class S, class C>
+void clearpq(priority_queue<T, S, C>& q) {
+    struct HackedQueue : private priority_queue<T, S, C> {
+        static S& Container(priority_queue<T, S, C>& q) {
+            return q.*&HackedQueue::c;
+        }
+    };
+    HackedQueue::Container(q).clear();
+}
+
+
 template<class EdgedGraph, class Value>
 class DijkstraShortestPath {
     
     struct Item {
+        Index orig;
         Index dst;
         Value val;
         
-        Item(Index dst, Value val) 
-        : dst(dst), val(val) {}
+        Item(Index orig, Index dst, Value val) 
+        : orig(orig), dst(dst), val(val) {}
         
         bool operator<(const Item& t) const {
             // need min priority queue
             return val > t.val;
         }
+        
     };
+    
+    struct R2 {
+        Index orig;
+        Value val;
+        
+        R2() {}
+        
+        R2(Index orig, Value val) 
+        : orig(orig), val(val) {}
+    };
+    
     
 public:
     DijkstraShortestPath(const EdgedGraph& graph, const std::vector<Value>& edgeValues) 
-    : graph(graph), edgeValues(edgeValues), vis(graph.nodeCount()), res(graph.nodeCount()) {
+    : graph(graph), edgeValues(edgeValues), rs(graph.nodeCount()) {
         
-        vis2[0].resize(graph.nodeCount());
-        vis2[1].resize(graph.nodeCount());
-    }
-    
-    // for each how much to travel
-    // could return ref, and keep array for reuse
-    // but that way it can be moved to the client actually
-    std::tuple<std::vector<Value>, std::vector<bool>> Compute(Index origin) {
-        std::vector<bool> visited(graph.nodeCount(), false);
-        std::vector<Value> res(graph.nodeCount(), std::numeric_limits<Value>::max());
-        res[origin] = 0;
-        // by distance put dest
-        std::priority_queue<Item> q;
-        q.emplace(origin, 0);
-        while (!q.empty()) {
-            Item t = q.top();
-            q.pop();
-            if (visited[t.dst]) continue;
-            visited[t.dst] = true;
-            for (auto p : graph.nextPairs(t.dst)) {
-                auto v = t.val + edgeValues[p.edge];
-                if (v < res[p.node]) {
-                    res[p.node] = v;
-                    q.emplace(p.node, v);
-                }
-            }
-        }
-        return std::make_tuple(res, visited);
     }
     
     
     std::tuple<Value, bool> Compute(Index src, Index dst) {
-        std::fill(vis.begin(), vis.end(), false);
-        std::priority_queue<Item> q;
-        q.emplace(src, 0);
-        while (!q.empty()) {
-            auto t = q.top();
-            q.pop();
-            if (vis[t.dst]) continue;
-            if (t.dst == dst) {
-                return {t.val, true};
-            }
-            vis[t.dst] = true;
-            for (auto p : graph.nextPairs(t.dst)) {
-                if (!vis[p.node]) {
-                    q.emplace(p.node, t.val + edgeValues[p.edge]);
-                }
-            }
-        }
-        return {0, false};
-    }
-    
-    std::tuple<Value, bool> Compute2(Index src, Index dst) {
-        std::fill(vis2[0].begin(), vis2[0].end(), false);
-        std::fill(vis2[1].begin(), vis2[1].end(), false);
+        if (src == dst) return make_tuple(0, true);
         
-        std::priority_queue<Item> q[2];
-        q[0].emplace(src, 0);
-        q[1].emplace(dst, 0);
+        clearpq(q);
+        std::fill(rs.begin(), rs.end(), R2(-1, 0));
+        
+        q.emplace(src, src, 0);
+        q.emplace(dst, dst, 0);
         
         for (;;) {
-            auto i = q[0].size() < q[1].size() ? 0 : 1;
-            auto t = q[i].top();
-            q[i].pop();
-            if (vis2[i][t.dst]) continue;
-            if (vis2[!i][t.dst]) {
-                return make_tuple(res[t.dst] + t.val, true);
+            if (q.empty()) cout << "lol" <<endl;
+            auto t = q.top();
+            q.pop();
+            if (rs[t.dst].orig == t.orig) continue;
+            if (rs[t.dst].orig != -1) {
+                return make_tuple(rs[t.dst].val + t.val, true);
             }
-            res[t.dst] = t.val;
-            vis2[i][t.dst] = true;
+            rs[t.dst] = {t.orig, t.val};
             
             for (auto p : graph.nextPairs(t.dst)) {
-                if (!vis2[i][p.node]) {
-                    q[i].emplace(p.node, t.val + edgeValues[p.edge]);
+                if (rs[p.node].orig != t.orig) {
+                    q.emplace(t.orig, p.node, t.val + edgeValues[p.edge]);
                 }
             }
         }
-        return {0, false};
+        return make_tuple(0, false);
     }
     
     
@@ -322,11 +297,9 @@ private:
     const EdgedGraph& graph;
     const std::vector<Value>& edgeValues;
     
-    std::vector<bool> vis;
+    std::vector<R2> rs; 
+    std::priority_queue<Item> q;
     
-    std::vector<bool> vis2[2];
-    
-    std::vector<Value> res;
 };
 
 
@@ -368,6 +341,12 @@ int main() {
         
         auto graph = builder.build();
         DijkstraShortestPath<decltype(graph), Count> pp(graph, edgeValues);
+        
+        // graph is way too big
+        // special allocation maybe required
+        
+        // write tests for the problem
+        // try max possible 
         
         for (auto q = 0; q < Q; ++q) {
             int S, D;
