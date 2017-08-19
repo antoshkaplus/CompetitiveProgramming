@@ -1,5 +1,3 @@
-
-
 #include <iostream>
 #include <string>
 #include <cmath>
@@ -17,9 +15,10 @@ const int n_max = 10000;
 const int r_max = 100;
 
 struct {
-    bool visited;
     int dist;
     vector<pair<int, int> > graph;
+    bool visited;
+    
 } info[n_max];
 
 pair<int, int> paths[r_max];
@@ -35,7 +34,7 @@ struct Item {
 };
 
 int main(int argc, char **argv) {
-    
+    std::ios_base::sync_with_stdio(false);
     int T;
     cin >> T;
     for (int t = 0; t < T; ++t) {
@@ -63,8 +62,8 @@ int main(int argc, char **argv) {
         }
         for (int i = 0; i < r; ++i) {
             for (int j = 0; j < n; ++j) {
-                info[i].visited = false;
-                info[i].dist = 2000000;
+                info[j].visited = false;
+                info[j].dist = 2000000;
             }
             info[paths[i].first].dist = 0;
             priority_queue<Item> pq;
@@ -79,7 +78,7 @@ int main(int argc, char **argv) {
                 for (int k = 0; k < info[i].graph.size(); ++k) {
                     int v = info[i].graph[k].first;
                     int alt = info[i].dist + info[i].graph[k].second;
-                    if (alt < info[v].dist && info[v].) {
+                    if (alt < info[v].dist) {
                         info[v].dist = alt;
                         pq.push(Item(v, info[v].dist));
                     }

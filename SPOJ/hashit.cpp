@@ -27,7 +27,7 @@ string arr[BOUND];
 int step[20];
 
 void insert(const string& str) {
-    int key = hash(str);
+    int key = ::hash(str);
     int first_free = -1;
     for (int i = 0; i < 20; ++i) {
         int k = (key + step[i])%BOUND;
@@ -43,7 +43,7 @@ void insert(const string& str) {
 }
 
 void remove(const string& str) {
-    int key = hash(str);
+    int key = ::hash(str);
     for (int i = 0; i < 20; ++i) {
         int k = (key + step[i])%BOUND;
         if (arr[k] == str) {

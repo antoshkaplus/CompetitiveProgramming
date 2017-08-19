@@ -12,9 +12,9 @@ const int kLetterMaxCount = 90;
 int score[kLetterMaxCount][kLetterMaxCount];
 // best score for number of letters on k first letters
 int table[kKeyMaxCount][kLetterMaxCount];
-// index of first letter in last key 
+// indeX of first letter in last key 
 // should be able to track result back with it 
-int index[kKeyMaxCount][kLetterMaxCount];
+int indeX[kKeyMaxCount][kLetterMaxCount];
 
 int frequency[kLetterMaxCount];
 int result[kKeyMaxCount];
@@ -46,30 +46,30 @@ int main(int argc, char **argv) {
         
         for (int p = 0; p < letter_count; ++p) {
             table[0][p] = score[0][p];
-            index[0][p] = 0;
+            indeX[0][p] = 0;
         }
         // key that's now available
         for (int k = 1; k < key_count; ++k) {
-            // index of last letter
+            // indeX of last letter
             for (int p = k; p < letter_count; ++p) {
                 // one letter for key
                 table[k][p] = table[k-1][k-1] + score[k][p];
-                index[k][p] = k;
+                indeX[k][p] = k;
                 // where to start new key letters?
                 // p is already in, so no need in investigation
                 for (int p_m = k; p_m+1 <= p; ++p_m) {
                     int s = table[k-1][p_m] + score[p_m+1][p];
                     if (s < table[k][p]) {
                         table[k][p] = s;
-                        index[k][p] = p_m+1;
+                        indeX[k][p] = p_m+1;
                     }
                 }
             }
         }
         
-        result[key_count-1] = index[key_count-1][letter_count-1];
+        result[key_count-1] = indeX[key_count-1][letter_count-1];
         for (int k = key_count-2; k >= 0; --k) {
-            result[k] = index[k][result[k+1]-1];
+            result[k] = indeX[k][result[k+1]-1];
         }
         
         cout << "Keypad #" << t+1 << ":" << endl;

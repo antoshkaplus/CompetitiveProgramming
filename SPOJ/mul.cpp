@@ -15,6 +15,7 @@ using namespace std;
 typedef size_t Count;
 typedef long long word_type;
 typedef size_t Index;
+using Int = int;
 
 struct bigint {
     

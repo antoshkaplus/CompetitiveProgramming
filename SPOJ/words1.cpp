@@ -49,7 +49,7 @@ AdjacencyList Reverse(const AdjacencyList& adj) {
 bool HasEulerianCycle(const AdjacencyList adj_list, int not_used) {
     int V = adj_list.size();
     // our starting vertex
-    int n;
+    int n = -1;
     for (int i = 0; i < V; ++i) {
         if (adj_list[i].size() > 0) {
             n = i;

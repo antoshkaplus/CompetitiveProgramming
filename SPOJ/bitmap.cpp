@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <algorithm>
 #include <map>
+#include <array>
 
 using namespace std;
 
