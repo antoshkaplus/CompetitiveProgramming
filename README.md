@@ -22,3 +22,12 @@ SPOJ/RHOMBS
   there are probably some geometrical rules involved.
 SPOJ/MATCHING
   Hopcroft-Karp should be learnt and put into Ant library.
+
+to solve:
+    MxN plane 2D. height + elevation map. How much water can be trapped:
+    M,N < 110, 0 < h < 20'000. 
+    
+    Sample:
+    [1,4,3,1,3,2]
+    [3,2,1,3,2,4] => 4
+    [2,3,3,2,3,1]
