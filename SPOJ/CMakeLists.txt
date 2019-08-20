@@ -3,7 +3,7 @@ cmake_minimum_required (VERSION 3.2.2)
 project ( Spoj )
 
 # this is used by DEBUG and RELEASE
-list( APPEND CMAKE_CXX_FLAGS "-std=c++1y -Werror -Wno-error=char-subscripts -Wno-char-subscripts" )
+list( APPEND CMAKE_CXX_FLAGS "-std=c++14 -Werror -Wno-error=char-subscripts -Wno-char-subscripts" )
 
 
 set(BinDir ${PROJECT_SOURCE_DIR}/bin)
