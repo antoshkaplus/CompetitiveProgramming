@@ -3,89 +3,114 @@
 #include <algorithm>
 #include <iostream>
 #include <stack>
+#include <numeric>
 
 using namespace std;
 
-using AdjacencyList = std::vector<std::vector<int>>;
+template <typename Index>
+using AdjacencyList = std::vector<std::vector<Index>>;
+
+// Source: https://math.stackexchange.com/questions/1871065/euler-path-for-directed-graph
+template<class Index>
+std::vector<Index> Hierholzer(const AdjacencyList<Index>& adj_list, Index start_v) {
+    std::vector<Index> cycle;
+    std::stack<Index> st;
+    st.push(start_v);
+
+    std::vector<Index> unmarked_start(adj_list.size(), 0);
+    while (!st.empty()) {
+        auto u = st.top();
+        auto i = unmarked_start[u];
+        if (i < adj_list[u].size()) {
+            auto w = adj_list[u][i];
+            st.push(w);
+            ++unmarked_start[u];
+        } else {
+            cycle.push_back(u);
+            st.pop();
+        }
+    }
+    if (cycle.size() > 0) {
+        cycle.pop_back();
+    }
+    return cycle;
+}
 
 
-bool DFS(const AdjacencyList& adj_list, int n, int not_used) {
-    int V = adj_list.size();
-    std::vector<bool> vis(V, false);
-    int vis_count = 0;
-    std::stack<int> st;
-    st.push(n);
-    while (!st.empty() && vis_count != V - not_used) {
-        int t = st.top();
-        st.pop();
-        if (!vis[t]) {
-            vis[t] = true;
-            ++vis_count;
-            for (int a : adj_list[t]) {
-                if (!vis[a]) st.push(a);
+template<class Index>
+bool HasEulerianPathDirectedGraph(AdjacencyList<Index> adj_list) {
+    Index Vn = adj_list.size();
+
+    std::vector<Index> outdegree(adj_list.size());
+    for (auto i = 0; i < adj_list.size(); ++i) {
+        outdegree[i] = adj_list[i].size();
+    }
+    std::vector<Index> indegree(adj_list.size(), 0);
+    for (const auto& adj : adj_list) {
+        for (auto a : adj) {
+            ++indegree[a];
+        }
+    }
+
+    const auto kInfinity = std::numeric_limits<Index>::max();
+    auto an = kInfinity;
+    auto bn = kInfinity;
+    for (auto i = 0; i < Vn; ++i) {
+        if (indegree[i] + 1 == outdegree[i]) {
+            if (an != kInfinity) {
+                return false;
             }
+            an = i;
         }
-    } 
-    return vis_count == V - not_used;
-}
-
-AdjacencyList Reverse(const AdjacencyList& adj) {
-    int V = adj.size();
-    AdjacencyList adj_new(V);
-    for (int i = 0; i < V; ++i) {
-        for (int j : adj[i]) {
-            adj_new[j].push_back(i);
+        else if (indegree[i] == outdegree[i] + 1) {
+            if (bn != kInfinity) {
+                return false;
+            }
+            bn = i;
         }
-    }
-    return adj_new;
-}
-
-
-// for directed graph
-
-// can implement is connected similar way
-
-// would need to reverse
-bool HasEulerianCycle(const AdjacencyList adj_list, int not_used) {
-    int V = adj_list.size();
-    // our starting vertex
-    int n = -1;
-    for (int i = 0; i < V; ++i) {
-        if (adj_list[i].size() > 0) {
-            n = i;
-            break;
-        }
-    }
-    bool vis = DFS(adj_list, n, not_used);
-    if (!vis) return false;
-    
-    auto adj_list_2 = Reverse(adj_list);
-    for (int i = 0; i < V; ++i) {
-        if (adj_list_2[i].size() != adj_list[i].size()) {
+        else if (indegree[i] != outdegree[i]) {
             return false;
         }
     }
-    
-    vis = DFS(adj_list_2, n, not_used);
-    return vis;
+    if ((an == kInfinity || bn == kInfinity) && an != bn) {
+        // didn't find one of the vertices, but not two
+        return false;
+    }
+
+    if (an != kInfinity && bn != kInfinity) {
+        adj_list[bn].push_back(an);
+    }
+
+    Index start_v = kInfinity;
+    for (auto i = 0; i < adj_list.size(); ++i) {
+        if (adj_list[i].size() > 0) {
+            start_v = i;
+            break;
+        }
+    }
+    if (start_v == kInfinity) {
+        return true;
+    }
+
+    auto cycle = Hierholzer(adj_list, start_v);
+    auto edges = 0;
+    for (auto i = 0; i < adj_list.size(); ++i) {
+        edges += adj_list[i].size();
+    }
+    if (edges != cycle.size()) {
+        return false;
+    }
+    return true;
 }
-
-
-
-
-
 
 
 int main() {
     constexpr int N = ('z'-'a') + 1;
     
-    int T;
+    int T; // ~500
     cin >> T;
-    array<int, N> A;
     for (int t = 0; t < T; ++t) {
-        AdjacencyList adj(N);
-        vector<bool> vis(N, false);
-        fill(A.begin(), A.end(), 0);
+        AdjacencyList<int> adj(N);
         int M;
         cin >> M;
         for (int i = 0; i < M; ++i) {
@@ -93,85 +118,113 @@ int main() {
             cin >> word;
             int s = word.front()-'a';
             int e = word.back()-'a';
-            ++A[s];
-            --A[e];
-            vis[s] = vis[e] = true;
             adj[s].push_back(e);
-        }   
-        int not_used = 0;
-        for (int i = 0; i < N; ++i) {
-            bool b = vis[i];
-            if (!b) ++not_used;
         }
-        
-        int s = -1;
-        int e = -1; 
-        bool possible = true;
-        for (int i = 0; i < N; ++i) {
-            if (A[i] > 0) {
-                if (s >= 0 || A[i] > 1) {
-                    possible = false;
-                    break;
-                } 
-                s = i;
-            }
-            if (A[i] < 0) {
-                if (e >= 0 || A[i] < -1) {
-                    possible = false;
-                    break;
-                }
-                e = i; 
-            }
-        }
-        if (possible) {
-            adj[e].push_back(s);
-            possible = HasEulerianCycle(adj, not_used);
-        }
+        auto possible = HasEulerianPathDirectedGraph(adj);
         cout << (possible ? "Ordering is possible." : "The door cannot be opened.") << endl;
     }
 }
 
 
 /*
+1
+1
+bc
+Ordering is possible
+***
+1
+3
+bc
+cb
+bc
+Ordering is possible
+***
+1
+4
+bc
+cb
+bc
+cb
+Ordering is possible
+***
+1
+4
+bc
+cd
+bc
+db
+Ordering is possible
+***
+1
+1
+zz
+Ordering is possible
+***
+1
+2
+zz
+zz
+Ordering is possible
+***
+1
+8
+ab
+gv
+vi
+ik
+ka
+ed
+dg
+bv
+Ordering is possible. Start with 'e'
+
  // test case
- 
- 9 
- 2 
+ 12
+ 2
  abcd 
  dcba 
- 1 
+ 1
  aa 
- 3 
+ 3
  aaa 
  bbb 
  ccc 
- 4 
+ 4
  masti 
  ishq 
  bc 
  cb 
- 3 
+ 3
  bc 
  cb 
  aa 
- 2 
+ 2
  aaa 
  bbb 
- 4 
+ 4
  ab 
  bc 
  ca 
  dd 
- 3 
+ 3
  ab 
  bc 
  ca 
- 6 
+ 6
  ab 
  bc 
  ca 
  zf 
  fg 
  gz
-
+2
+acm
+ibm
+3
+acm
+malform
+mouse
+2
+ok
+ok
 */
